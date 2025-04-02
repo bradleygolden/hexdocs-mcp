@@ -98,14 +98,14 @@ defmodule HexdocsMcp.CLI do
   end
 
   defp prepare_chunks_dir(package) do
-    data_path = Application.get_env(:hexdocs_mcp, :data_path)
+    data_path = HexdocsMcp.Config.data_path()
     chunks_dir = Path.join([data_path, package, "chunks"])
     File.mkdir_p!(chunks_dir)
     chunks_dir
   end
 
   defp create_markdown_file(package, version) do
-    data_path = Application.get_env(:hexdocs_mcp, :data_path)
+    data_path = HexdocsMcp.Config.data_path()
     version_str = if version, do: version, else: "latest"
     Path.join([data_path, package, "#{version_str}.md"])
   end
@@ -223,7 +223,7 @@ defmodule HexdocsMcp.CLI do
   end
 
   defp ensure_markdown_dir!(package) do
-    data_path = Application.get_env(:hexdocs_mcp, :data_path)
+    data_path = HexdocsMcp.Config.data_path()
     File.mkdir_p!(Path.join(data_path, package))
   end
 

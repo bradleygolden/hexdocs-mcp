@@ -43,8 +43,6 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
   3. Returns the most relevant results
   """
 
-  @default_model Application.compile_env(:hexdocs_mcp, :default_embedding_model)
-
   def run(["fetch" | args]) do
     %{package: package, version: version, model: model} = parse_args!(args)
     HexdocsMcp.CLI.process_docs(package, version, model)
@@ -93,7 +91,7 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
     %{
       package: package,
       version: List.first(args) || "latest",
-      model: opts[:model] || @default_model,
+      model: opts[:model] || HexdocsMcp.Config.default_embedding_model(),
       search: opts[:query]
     }
   end
