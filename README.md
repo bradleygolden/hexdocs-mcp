@@ -73,7 +73,7 @@ $ mix hex.docs.mcp search --query "channels" phoenix
 - Supports semantic search in the generated embeddings
 - Flexible model selection for different embedding quality/performance tradeoffs
 
-### Pro Tip
+## Pro Tip
 
 When you're vibing with an agent and you find that you don't have the given documentation for a specific tool, you can have the AI run the `mix hex.docs.mcp fetch ...` command for you so you don't have to.
 
