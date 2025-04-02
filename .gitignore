@@ -17,9 +17,9 @@ erl_crash.dump
 *.ez
 
 # Ignore package tarball (built via "mix hex.build").
-hex_mcp-*.tar
+hexdocs_mcp-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
 
-.hex_mcp/
+.hexdocs_mcp/
