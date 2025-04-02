@@ -14,7 +14,7 @@ The project consists of two main components:
 ```elixir
 def deps do
   [
-    {:hexdocs_mcp, "~> 0.1.0"}
+    {:hexdocs_mcp, "~> 0.1.0", only: :dev}
   ]
 end
 ```
@@ -35,6 +35,12 @@ export HEXDOCS_MCP_PATH=/path/to/custom/directory
 ```
 
 ## Usage
+
+Start by initializing the sqlite database used to store embeddings:
+
+```
+$ mix hex.docs.mcp init
+```
 
 Fetch documentation, process, and generate embeddings for a package:
 

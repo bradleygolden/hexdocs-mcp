@@ -11,8 +11,8 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
 
       $ mix hex.docs.mcp COMMAND [options] PACKAGE [VERSION]
 
-  * `COMMAND` - Either `fetch` or `search` (required)
-  * `PACKAGE` - Hex package name to work with (required)
+  * `COMMAND` - Either `fetch`, `search`, or `init` (required)
+  * `PACKAGE` - Hex package name to work with (required for fetch/search)
   * `VERSION` - Package version to work with (optional, defaults to latest)
 
   ## Options
@@ -22,7 +22,8 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
 
   ## Examples
 
-      $ mix hex.docs.mcp fetch phoenix                # Download, chunk docs and generate embeddings
+      $ mix hex.docs.mcp init                        # Initialize the database
+      $ mix hex.docs.mcp fetch phoenix              # Download, chunk docs and generate embeddings
       $ mix hex.docs.mcp fetch --model all-minilm phoenix   # Use custom model for embeddings
       $ mix hex.docs.mcp search --query "channels" phoenix  # Search in existing embeddings
 
@@ -30,6 +31,10 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
 
       $ mix hex.docs.mcp --query "channels" phoenix  # Equivalent to search command
       $ mix hex.docs.mcp phoenix                     # Equivalent to fetch command
+
+  The init command:
+  1. Creates the database and required tables
+  2. Sets up necessary indexes for vector search
 
   The fetch command:
   1. Downloads docs using mix hex.docs
@@ -42,6 +47,10 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
   2. Performs a similarity search using the query
   3. Returns the most relevant results
   """
+
+  def run(["init" | _args]) do
+    HexdocsMcp.CLI.init_database()
+  end
 
   def run(["fetch" | args]) do
     %{package: package, version: version, model: model} = parse_args!(args)

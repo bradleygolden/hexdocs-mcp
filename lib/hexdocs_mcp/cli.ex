@@ -4,7 +4,17 @@ defmodule HexdocsMcp.CLI do
   """
 
   alias HexdocsMcp.CLI.Progress
-  require Logger
+  alias HexdocsMcp.{Repo, Migrations}
+
+  @doc """
+  Initialize the database and required tables.
+  """
+  def init_database do
+    Migrations.create_embeddings_table()
+    |> Enum.each(fn sql -> Repo.query!(sql) end)
+
+    Mix.shell().info("#{check()} Database initialized successfully!")
+  end
 
   @doc """
   Process documentation for a package and optionally generate embeddings.
