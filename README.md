@@ -1,13 +1,13 @@
-# HexdocsMcp
+# HexDocs MCP
 
-HexdocsMcp is a tool that downloads Hex package documentation, converts it to markdown format, and creates semantic text chunks suitable for embedding in vector databases. It downloads the HTML documentation using the `mix hex.docs` task, converts all HTML files to a single markdown file, and then creates semantically meaningful chunks with metadata.
+HexDocs MCP is a wrapper around the `mix hex.docs` command that adds functionality for generating embeddings from Hex package documentation. These embeddings are specifically designed for use in AI applications, specifically for MCP servers in this use case.
 
 ## Components
 
 The project consists of two main components:
 
-1. **Elixir HexdocsMcp** - Downloads, processes and embeds Hex package documentation
-2. **MCP Server** - A TypeScript implementation of the Model Context Protocol (MCP) that provides a searchable interface to the embeddings
+1. **Elixir HexDocs Mcp (this project)** - Downloads, processes and embeds Hex package documentation
+2. [**HexDocs MCP Server**](https://github.com/bradleygolden/hexdocs-mcp-server) - A TypeScript implementation of the Model Context Protocol (MCP) that provides a searchable interface to the embeddings in an easily installable format via `npx`
 
 ## Installation
 
@@ -25,22 +25,16 @@ end
   - Run `ollama pull nomic-embed-text` to download the recommended embedding model
   - Ensure Ollama is running before using hexdocs_mcp with embedding features
 
-## Usage
+## Configuration
 
-### Configuration
-
-By default, HexdocsMcp stores all data in `~/.hexdocs_mcp` in the user's home directory. You can change this location by setting the `HEXDOCS_MCP_PATH` environment variable:
+By default, HexDocs MCP stores all data in `~/.hexdocs_mcp` in the user's home directory. You can change this location by setting the `HEXDOCS_MCP_PATH` environment variable:
 
 ```bash
 # Example: Set custom storage location
 export HEXDOCS_MCP_PATH=/path/to/custom/directory
 ```
 
-Both the Elixir module and MCP server will use this configuration to find and store data.
-
-### Elixir HexdocsMcp
-
-The command requires explicit subcommands: `fetch` or `search`.
+## Usage
 
 Fetch documentation, process, and generate embeddings for a package:
 
@@ -66,44 +60,6 @@ Search in the existing embeddings:
 $ mix hex.docs.mcp search --query "channels" phoenix
 ```
 
-Legacy mode (still supported, automatically chooses fetch or search based on presence of --query option):
-
-```
-$ mix hex.docs.mcp --query "channels" phoenix  # equivalent to search command
-$ mix hex.docs.mcp phoenix                    # equivalent to fetch command
-```
-
-This will:
-
-1. Download the package documentation using `mix hex.docs fetch`
-2. Convert all HTML files to markdown
-3. Save the converted documentation as a single markdown file in `~/.hexdocs_mcp/package/version.md` (or custom path set via HEXDOCS_MCP_PATH)
-4. Create semantic text chunks for embedding, stored as JSON files in `~/.hexdocs_mcp/package/chunks/` (or custom path)
-5. Generate embeddings using Ollama (unless `--no-embed` is specified), stored in SQLite database at `~/.hexdocs_mcp/hexdocs_mcp.db`
-6. Optionally search in the generated embeddings
-
-### MCP Server
-
-The MCP server provides a Model Context Protocol compatible interface to search the embeddings:
-
-```bash
-# Navigate to the server directory
-cd mcp_server
-
-# Install dependencies
-npm install
-
-# Build the project
-npm run build
-
-# Start the server (automatically uses ~/.hexdocs_mcp/hexdocs_mcp.db)
-npm start
-```
-
-The server will be available at http://localhost:4000 and can be used with any MCP client.
-
-For more details see the [MCP Server README](mcp_server/README.md).
-
 ## Features
 
 - Downloads package documentation using Hex
@@ -116,11 +72,14 @@ For more details see the [MCP Server README](mcp_server/README.md).
 - Generates embeddings using open source models via Ollama
 - Supports semantic search in the generated embeddings
 - Flexible model selection for different embedding quality/performance tradeoffs
-- MCP-compatible server for easy integration with AI assistants
+
+### Pro Tip
+
+You can use the `hexdocs_mcp_server` library within your AI tooling to programmatically generate commands for adding packages using `mix hex.docs.mcp` so you don't have to manually. For example, an AI might find that you don't have the documentation for a given tool and then recognize it can run `mix hex.docs.mcp fetch ...`.
 
 ## Chunk Format
 
-The generated chunks are stored as JSON files with the following structure:
+The generated chunks are stored as JSON files with the following structure or similar:
 
 ```json
 {
@@ -137,3 +96,9 @@ The generated chunks are stored as JSON files with the following structure:
 ```
 
 These chunks can be directly used for vector embeddings in systems like OpenAI, PostgreSQL pgvector, or other vector databases.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+This project is licensed under MIT - see the [LICENSE](LICENSE) file for details.
