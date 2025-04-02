@@ -75,7 +75,7 @@ $ mix hex.docs.mcp search --query "channels" phoenix
 
 ### Pro Tip
 
-You can use the `hexdocs_mcp_server` library within your AI tooling to programmatically generate commands for adding packages using `mix hex.docs.mcp` so you don't have to manually. For example, an AI might find that you don't have the documentation for a given tool and then recognize it can run `mix hex.docs.mcp fetch ...`.
+When you're vibing with an agent and you find that you don't have the given documentation for a specific tool, you can have the AI run the `mix hex.docs.mcp fetch ...` command for you so you don't have to.
 
 ## Chunk Format
 
