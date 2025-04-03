@@ -1,19 +1,13 @@
-# Smithery.ai configuration
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
 startCommand:
   type: stdio
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
-    {}
+    type: object
+    properties: {}
   commandFunction:
-    # A function that produces the CLI command to start the MCP.
-    # The PORT environment variable can be set to enable HTTP mode
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
-    (config) => ({
-      "command": "node",
-      "args": [
-        "dist/index.js"
-      ],
-      "env": {
-        "PORT": "8080"
-      }
-    })
+    (config) => ({ command: 'node', args: ['dist/index.js'] })
+  exampleConfig: {}

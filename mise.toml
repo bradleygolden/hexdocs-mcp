@@ -12,11 +12,9 @@ depends = ["build", "build_docker_smithery", "test"]
 run = ""
 depends = ["build_elixir", "build_ts"]
 
-
 [tasks.test]
 run = ""
 depends = ["test_elixir"]
-
 
 # low level tasks
 
@@ -38,7 +36,7 @@ run = "npm run build"
 depends = ["setup_ts"]
 
 [tasks.build_docker_smithery]
-run = "docker build -t smithery . -f Dockerfile.smithery"
+run = "docker build -t smithery . -f Dockerfile"
 
 [tasks.test_elixir]
 run = ""
