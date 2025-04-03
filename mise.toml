@@ -5,48 +5,22 @@ node = "22"
 # high level tasks
 
 [tasks.prerelease]
-run = ""
-depends = ["build", "build_docker_smithery", "test"]
+depends = ["build"]
+depends_post = ["test"]
 
 [tasks.build]
-run = ""
-depends = ["build_elixir", "build_ts"]
+run = ["mix setup", "mix compile --no-optional-deps --warnings-as-errors", "npm i", "npm run build"]
 
 [tasks.test]
-run = ""
-depends = ["test_elixir"]
+run = ["mix test", "mix format --check-formatted", "mix deps --check-unused", "mix deps.unlock --all", "mix deps.get", "mix test", "git checkout mix.lock"]
 
 # low level tasks
 
 [tasks.mcp_inspect]
 run = "MCP_INSPECTOR=true npx @modelcontextprotocol/inspector node dist/index.js"
 
-[tasks.setup_elixir]
-run = "mix setup"
-
-[tasks.setup_ts]
-run = "npm i"
-
-[tasks.build_elixir]
-run = "mix compile --no-optional-deps --warnings-as-errors"
-depends = ["setup_elixir"]
-
-[tasks.build_ts]
-run = "npm run build"
-depends = ["setup_ts"]
-
 [tasks.build_docker_smithery]
 run = "docker build -t smithery . -f Dockerfile"
-
-[tasks.test_elixir]
-run = ""
-depends = ["mix_test", "mix_format_check"]
-
-[tasks.mix_test]
-run = "mix test"
-
-[tasks.mix_format_check]
-run = "mix format --check-formatted"
 
 [tasks.start_mcp_server]
 run = "PORT=8080 node dist/index.js"
