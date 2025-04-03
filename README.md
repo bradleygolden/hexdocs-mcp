@@ -77,11 +77,13 @@ This is also configurable in the MCP configuration for the server:
 
 ### Elixir Package
 
-Start by initializing the sqlite database used to store embeddings:
+If you're using the Elixir package directly (without the MCP server), initialize the SQLite database:
 
 ```bash
 mix hex.docs.mcp init
 ```
+
+> **Note:** When using the MCP server, this initialization step is not needed as the database is automatically created when the server starts.
 
 Fetch documentation, process, and generate embeddings for a package:
 

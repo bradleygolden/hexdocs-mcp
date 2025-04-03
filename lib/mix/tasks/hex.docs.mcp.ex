@@ -35,6 +35,9 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
   The init command:
   1. Creates the database and required tables
   2. Sets up necessary indexes for vector search
+  
+  Note: The init command is only required when using the Elixir package directly.
+  When using the MCP server, the database is initialized automatically.
 
   The fetch command:
   1. Downloads docs using mix hex.docs

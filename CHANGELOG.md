@@ -26,6 +26,7 @@ Initial release of HexDocs MCP, providing semantic search capabilities for Hex p
 - Model Context Protocol (MCP) server implementation
 - Integration with MCP-compatible clients (Cursor, Claude Desktop App, etc.)
 - Vector similarity search using SQLite database
+- Automatic database initialization (no need to run `mix hex.docs.mcp init` when using the MCP server)
 
 ### Dependencies
 - Requires Elixir 1.16 or later

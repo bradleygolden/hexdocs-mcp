@@ -6,7 +6,7 @@ import { z } from "zod";
 import * as path from "path";
 import * as os from "os";
 import * as fs from "fs";
-import Database from "better-sqlite3";
+import BetterSqlite3 from "better-sqlite3";
 import { Ollama } from "ollama";
 import * as sqliteVec from "sqlite-vec";
 
@@ -41,11 +41,10 @@ const defaultDbPath = path.join(hexdocsPath, 'hexdocs_mcp.db');
 const args = process.argv.slice(2);
 const dbPath = args[0] || defaultDbPath;
 
-// Check if database exists
-if (!fs.existsSync(dbPath)) {
-    console.error(`Error: SQLite database not found at: ${dbPath}`);
-    console.error('Please provide a valid database path or ensure the default path exists.');
-    process.exit(1);
+// Ensure the directory exists
+if (!fs.existsSync(path.dirname(dbPath))) {
+    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+    console.log(`Created directory for database at: ${path.dirname(dbPath)}`);
 }
 
 // Create MCP server
@@ -54,8 +53,38 @@ const server = new McpServer({
     version: "0.1.0"
 });
 
-// Initialize database connection
-const db = new Database(dbPath);
+// Initialize database connection with lazy initialization
+let db: BetterSqlite3.Database;
+try {
+    const dbExists = fs.existsSync(dbPath);
+    db = new BetterSqlite3(dbPath);
+    
+    // Initialize the schema if database is new
+    if (!dbExists) {
+        console.log(`Initializing new database at: ${dbPath}`);
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS embeddings(
+                id INTEGER PRIMARY KEY,
+                package TEXT NOT NULL,
+                version TEXT NOT NULL,
+                source_file TEXT NOT NULL,
+                source_type TEXT,
+                start_byte INTEGER,
+                end_byte INTEGER,
+                text_snippet TEXT,
+                text TEXT NOT NULL,
+                embedding BLOB NOT NULL,
+                inserted_at TIMESTAMP,
+                updated_at TIMESTAMP,
+                UNIQUE(package, version, source_file, text_snippet)
+            );
+            CREATE INDEX IF NOT EXISTS idx_embeddings_package_version ON embeddings(package, version);
+        `);
+    }
+} catch (error) {
+    console.error(`Error initializing database: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    process.exit(1);
+}
 
 // Load SQLite vector extension
 sqliteVec.load(db);
