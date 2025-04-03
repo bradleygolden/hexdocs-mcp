@@ -5,7 +5,8 @@ defmodule HexdocsMcp.Application do
   @doc false
   def start(_type, _args) do
     children = [
-      {HexdocsMcp.Repo, load_extensions: [SqliteVec.path()]}
+      {HexdocsMcp.Repo,
+       load_extensions: [SqliteVec.path()], database: HexdocsMcp.Config.database()}
     ]
 
     opts = [strategy: :one_for_one, name: HexdocsMcp.Supervisor]

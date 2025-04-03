@@ -33,7 +33,7 @@ defmodule HexdocsMcp.Embeddings do
   def generate(package, version, model, opts \\ []) do
     progress_callback = opts[:progress_callback]
 
-    data_path = Application.get_env(:hexdocs_mcp, :data_path)
+    data_path = HexdocsMcp.Config.data_path()
     chunks_dir = Path.join([data_path, package, "chunks"])
     default_version = version || "latest"
 

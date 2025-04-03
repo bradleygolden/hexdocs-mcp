@@ -75,7 +75,7 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
   defp ensure_database_initialized do
     # Ensure data directory exists
     data_path = HexdocsMcp.Config.data_path()
-    File.mkdir_p!(data_path)
+    File.mkdir_p(data_path)
 
     try do
       # Try executing a simple query against the embeddings table
