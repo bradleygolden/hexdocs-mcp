@@ -73,6 +73,10 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
   
   # Check if database is initialized and initialize if not
   defp ensure_database_initialized do
+    # Ensure data directory exists
+    data_path = HexdocsMcp.Config.data_path()
+    File.mkdir_p!(data_path)
+
     try do
       # Try executing a simple query against the embeddings table
       HexdocsMcp.Repo.query!("SELECT 1 FROM embeddings LIMIT 1")
@@ -86,6 +90,11 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
           # Re-raise if it's a different error
           reraise error, __STACKTRACE__
         end
+        
+      # Handle connection errors separately
+      _ in DBConnection.ConnectionError ->
+        Mix.shell().info("Database connection issue. Running initialization...")
+        HexdocsMcp.CLI.init_database()
     end
   end
 

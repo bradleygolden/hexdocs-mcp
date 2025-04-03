@@ -47,6 +47,7 @@ defmodule HexdocsMcp.MixProject do
       {:ecto, "~> 3.0"},
       {:ecto_sql, "~> 3.0"},
       {:ecto_sqlite3, "~> 0.16"},
+      {:floki, ">= 0.30.0"},
       {:sqlite_vec, "~> 0.1"},
 
       # Development and documentation dependencies
