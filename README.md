@@ -117,6 +117,71 @@ When you need documentation for a specific package you don't have already, you c
 
 - [hex2text](https://github.com/mjrusso/hex2txt) - For the initial idea and as a reference
 
+## Development
+
+This project uses [mise](https://mise.jdx.dev/) (formerly rtx) to manage development tools and tasks. Mise provides consistent tool versions and task automation across the project.
+
+### Setting Up Development Environment
+
+1. Install mise (if you don't have it already):
+   ```bash
+   # macOS with Homebrew
+   brew install mise
+   
+   # Using the installer script
+   curl https://mise.run | sh
+   ```
+
+2. Clone the repository and setup the development environment:
+   ```bash
+   git clone https://github.com/bradleygolden/hexdocs-mcp.git
+   cd hexdocs-mcp
+   mise install # Installs the right versions of Elixir and Node.js
+   ```
+
+3. Setup dependencies:
+   ```bash
+   mise run setup_elixir
+   mise run setup_ts
+   ```
+
+### Development Tasks
+
+Mise defines several useful development tasks:
+
+- `mise run build` - Build both Elixir and TypeScript components
+- `mise run test` - Run all tests
+- `mise run mcp_inspect` - Start the MCP inspector for testing the server
+- `mise run start_mcp_server` - Start the MCP server (primarily for debugging)
+
+### Without Mise
+
+If you prefer not to use mise, you'll need:
+
+- Elixir 1.18.x
+- Node.js 22.x
+
+Then, you can run these commands directly:
+
+```bash
+# Instead of mise run setup_elixir
+mix setup
+
+# Instead of mise run setup_ts
+npm install
+
+# Instead of mise run build
+mix compile --no-optional-deps --warnings-as-errors
+npm run build
+
+# Instead of mise run test
+mix test
+mix format --check-formatted
+
+# Instead of mise run mcp_inspect
+MCP_INSPECTOR=true npx @modelcontextprotocol/inspector node dist/index.js
+```
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.

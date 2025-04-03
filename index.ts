@@ -15,14 +15,6 @@ interface PackageRow {
     package: string;
 }
 
-interface EmbeddingRow {
-    embedding: string;
-    text: string;
-    package: string;
-    version: string;
-    source_file: string;
-}
-
 interface SearchResult {
     id: number;
     package: string;
@@ -44,13 +36,16 @@ const dbPath = args[0] || defaultDbPath;
 // Ensure the directory exists
 if (!fs.existsSync(path.dirname(dbPath))) {
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-    console.log(`Created directory for database at: ${path.dirname(dbPath)}`);
+    process.stderr.write(`Created directory for database at: ${path.dirname(dbPath)}\n`);
 }
 
-// Create MCP server
+// Create MCP server for providing Hex documentation search capabilities
+// Use stderr for logging since stdout is used for JSON communication
+process.stderr.write("Initializing MCP server...\n");
 const server = new McpServer({
     name: "HexdocsMCP",
-    version: "0.1.0"
+    version: "0.1.0",
+    description: "MCP server for searching Elixir Hex package documentation using embeddings"
 });
 
 // Initialize database connection with lazy initialization
@@ -58,10 +53,10 @@ let db: BetterSqlite3.Database;
 try {
     const dbExists = fs.existsSync(dbPath);
     db = new BetterSqlite3(dbPath);
-    
+
     // Initialize the schema if database is new
     if (!dbExists) {
-        console.log(`Initializing new database at: ${dbPath}`);
+        process.stderr.write(`Initializing new database at: ${dbPath}\n`);
         db.exec(`
             CREATE TABLE IF NOT EXISTS embeddings(
                 id INTEGER PRIMARY KEY,
@@ -82,7 +77,7 @@ try {
         `);
     }
 } catch (error) {
-    console.error(`Error initializing database: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    process.stderr.write(`Error initializing database: ${error instanceof Error ? error.message : 'Unknown error'}\n`);
     process.exit(1);
 }
 
@@ -92,20 +87,22 @@ sqliteVec.load(db);
 // Initialize Ollama client
 const ollama = new Ollama();
 
-// Helper function to calculate cosine similarity
-function cosineSimilarity(a: number[], b: number[]): number {
-    let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
-    for (let i = 0; i < a.length; i++) {
-        dotProduct += a[i] * b[i];
-        normA += a[i] * a[i];
-        normB += b[i] * b[i];
-    }
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-}
+// Define the vector search parameters schema
+const vectorSearchParams = {
+    query: z.string().describe("The search query to find relevant documentation"),
+    packageName: z.string().describe("The Hex package name to search within"),
+    version: z.string().optional().describe("Optional package version, defaults to latest"),
+    limit: z.number().optional().default(5).describe("Maximum number of results to return")
+};
 
-// Add resources
+type VectorSearchInput = {
+    query: string;
+    packageName: string;
+    version?: string;
+    limit: number;
+};
+
+// Register the package list resource
 server.resource(
     "packages",
     "packages://list",
@@ -120,16 +117,11 @@ server.resource(
     }
 );
 
-// Add tools
+// Register the vector search tool
 server.tool(
     "vector_search",
-    {
-        query: z.string(),
-        packageName: z.string(),
-        version: z.string().optional(),
-        limit: z.number().optional().default(5)
-    },
-    async ({ query, packageName, version, limit }) => {
+    vectorSearchParams,
+    async ({ query, packageName, version, limit }: VectorSearchInput) => {
         try {
             // Get query embedding from Ollama
             const queryEmbedding = await ollama.embeddings({
@@ -177,7 +169,7 @@ server.tool(
                 }]
             };
         } catch (error) {
-            console.error('Error during vector search:', error);
+            process.stderr.write(`Error during vector search: ${error instanceof Error ? error.message : 'Unknown error'}\n`);
             return {
                 content: [{
                     type: "text",
@@ -189,15 +181,10 @@ server.tool(
     }
 );
 
-// Start the server
-async function main() {
-    try {
-        const transport = new StdioServerTransport();
-        await server.connect(transport);
-    } catch (error) {
-        console.error('Error starting server:', error);
-        process.exit(1);
-    }
-}
-
-main(); 
+// Start the server in stdio mode
+process.stderr.write("Starting server in stdio mode\n");
+const transport = new StdioServerTransport();
+server.connect(transport).catch(error => {
+    process.stderr.write(`Error connecting server to transport: ${error instanceof Error ? error.message : 'Unknown error'}\n`);
+    process.exit(1);
+});
