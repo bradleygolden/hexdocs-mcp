@@ -70,7 +70,7 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
       HexdocsMcp.CLI.process_docs(package, version, model)
     end
   end
-  
+
   # Check if database is initialized and initialize if not
   defp ensure_database_initialized do
     # Ensure data directory exists
@@ -90,7 +90,7 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
           # Re-raise if it's a different error
           reraise error, __STACKTRACE__
         end
-        
+
       # Handle connection errors separately
       _ in DBConnection.ConnectionError ->
         Mix.shell().info("Database connection issue. Running initialization...")
