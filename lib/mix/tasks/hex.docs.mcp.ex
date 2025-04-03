@@ -45,12 +45,14 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
   """
 
   def run(["fetch" | args]) do
+    Application.ensure_all_started(:hexdocs_mcp)
     %{package: package, version: version, model: model} = parse_args!(args)
     ensure_database_initialized()
     HexdocsMcp.CLI.process_docs(package, version, model)
   end
 
   def run(["search" | args]) do
+    Application.ensure_all_started(:hexdocs_mcp)
     %{package: package, version: version, model: model, search: search} = parse_args!(args)
     ensure_database_initialized()
     HexdocsMcp.CLI.search(search, package, version, model)
@@ -61,6 +63,7 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
   end
 
   def run(args) do
+    Application.ensure_all_started(:hexdocs_mcp)
     %{package: package, version: version, model: model, search: search} = parse_args!(args)
     ensure_database_initialized()
 
