@@ -37,7 +37,8 @@ But you can update it to be available in the :dev environment:
 The TypeScript MCP server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) and is designed to be used by MCP-compatible clients such as Cursor, Claude Desktop App, Continue, and others. The server provides tools for semantic search of Hex documentation. For a complete list of MCP-compatible clients, see the [MCP Clients documentation](https://modelcontextprotocol.io/clients).
 
 1. Clone the repository
-2. Add this to your client's MCP json config:
+2. Run `npm run build` in the root directory. This should create a `dist` directory with the MCP server.
+3. Add this to your client's MCP json config:
 
 ```json
 {
