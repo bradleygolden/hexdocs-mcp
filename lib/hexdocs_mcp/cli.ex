@@ -4,7 +4,7 @@ defmodule HexdocsMcp.CLI do
   """
 
   alias HexdocsMcp.CLI.Progress
-  alias HexdocsMcp.{Repo, Migrations}
+  alias HexdocsMcp.{Repo, Migrations, Markdown}
 
   @doc """
   Initialize the database and required tables.
@@ -334,7 +334,7 @@ defmodule HexdocsMcp.CLI do
 
       IO.write(file, "---\n\n")
       IO.write(file, "# #{relative_path}\n\n")
-      IO.write(file, Html2Markdown.convert(html_content))
+      IO.write(file, Markdown.from_html(html_content))
       IO.write(file, "\n\n---\n\n")
     end)
   end

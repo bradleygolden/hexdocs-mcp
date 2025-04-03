@@ -40,7 +40,6 @@ defmodule HexdocsMcp.MixProject do
   defp deps do
     [
       # Core dependencies
-      {:html2markdown, "~> 0.1"},
       {:text_chunker, "~> 0.3"},
       {:jason, "~> 1.0"},
       {:ollama, "~> 0.8"},
