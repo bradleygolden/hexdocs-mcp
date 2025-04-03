@@ -25,7 +25,7 @@ run = "mix compile --no-optional-deps --warnings-as-errors"
 depends = ["setup_elixir"]
 
 [tasks.build_ts]
-run = "npm run prepare"
+run = "npm run build"
 depends = ["setup_ts"]
 
 [tasks.test_elixir]

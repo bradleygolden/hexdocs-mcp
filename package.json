@@ -14,7 +14,8 @@
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "test": "echo \"No tests specified\""
   },
   "keywords": [
     "hexdocs",
@@ -22,14 +23,21 @@
     "embeddings",
     "search",
     "vector",
-    "documentation"
+    "documentation",
+    "model-context-protocol",
+    "ai",
+    "semantic-search"
   ],
-  "author": "",
+  "author": "Bradley Golden",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/bradleygolden/hexdocs-mcp"
   },
+  "bugs": {
+    "url": "https://github.com/bradleygolden/hexdocs-mcp/issues"
+  },
+  "homepage": "https://github.com/bradleygolden/hexdocs-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest",
     "better-sqlite3": "^9.0.0",
