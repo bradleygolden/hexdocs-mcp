@@ -192,6 +192,38 @@ mix test
 MCP_INSPECTOR=true npx @modelcontextprotocol/inspector node dist/index.js
 ```
 
+## AI Assistant Integration
+
+This project includes custom instructions for AI assistants to help optimize your workflow when working with Hex documentation.
+
+### Example Custom Instructions
+
+You can find sample custom instructions in the repository:
+- [Cursor rules](.cursor/rules/hexdocs-mcp.mdc) - Custom rules for Cursor editor
+- [GitHub Copilot](.github/copilot/instructions.md) - Custom instructions for GitHub Copilot
+
+### Suggested Content
+
+```
+When working with Elixir projects that use Hex packages:
+
+## Documentation Lookup
+
+1. First try looking up documentation using the hexdocs-mcp vector_search tool if available
+2. If documentation isn't found, suggest fetching them with:
+   - Basic usage: `mix hex.docs.mcp fetch PACKAGE`
+   - Specific version: `mix hex.docs.mcp fetch PACKAGE VERSION`
+   - Custom model: `mix hex.docs.mcp fetch --model all-minilm PACKAGE`
+3. After fetching, search with `mix hex.docs.mcp search --query "your query" PACKAGE`
+
+## HexDocs MCP Usage Tips
+
+- The SQLite database for vector storage is created automatically when needed
+- Default data location is `~/.hexdocs_mcp` unless HEXDOCS_MCP_PATH is set
+- Requires Ollama running with nomic-embed-text model pulled
+- For MCP-compatible editors, suggest configuring the HexDocs MCP server
+```
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
