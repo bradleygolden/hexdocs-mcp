@@ -200,4 +200,4 @@ MCP_INSPECTOR=true npx @modelcontextprotocol/inspector node dist/index.js
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
-This project is licensed under MIT - see the [LICENSE](LICENSE) file for details.
+This project is licensed under MIT - see the [LICENSE](https://github.com/bradleygolden/hexdocs-mcp/blob/main/LICENSE) file for details.
