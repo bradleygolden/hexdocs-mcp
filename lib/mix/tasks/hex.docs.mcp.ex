@@ -18,18 +18,13 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
   ## Options
 
       --model MODEL    - Ollama model to use for embeddings (default: nomic-embed-text)
-      --query QUERY    - Query string for search command (or --search in legacy mode)
+      --query QUERY    - Query string for search command
 
   ## Examples
 
       $ mix hex.docs.mcp fetch phoenix              # Download, chunk docs and generate embeddings
       $ mix hex.docs.mcp fetch --model all-minilm phoenix   # Use custom model for embeddings
       $ mix hex.docs.mcp search --query "channels" phoenix  # Search in existing embeddings
-
-  ## Legacy Mode (still supported)
-
-      $ mix hex.docs.mcp --query "channels" phoenix  # Equivalent to search command
-      $ mix hex.docs.mcp phoenix                     # Equivalent to fetch command
 
   The fetch command:
   1. Downloads docs using mix hex.docs
