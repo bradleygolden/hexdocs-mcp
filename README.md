@@ -10,11 +10,7 @@ HexDocs MCP is a project that provides semantic search capabilities for Hex pack
 ### Elixir Package
 
 ```elixir
-def deps do
-  [
-    {:hexdocs_mcp, "~> 0.1.0", only: :dev, runtime: false}
-  ]
-end
+{:hexdocs_mcp, "~> 0.1.0", only: :dev, runtime: false}
 ```
 
 And if you use floki or any other dependencies that are marked as only available in
