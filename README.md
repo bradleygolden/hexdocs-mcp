@@ -21,21 +21,23 @@ end
 
 The TypeScript MCP server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) and is designed to be used by MCP-compatible clients such as Cursor, Claude Desktop App, Continue, and others. The server provides tools for semantic search of Hex documentation. For a complete list of MCP-compatible clients, see the [MCP Clients documentation](https://modelcontextprotocol.io/clients).
 
-Add this to your client's MCP json config:
+1. Clone the repository
+2. Add this to your client's MCP json config:
 
 ```json
 {
   "mcpServers": {
     "hexdocs-mcp": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "hexdocs-mcp"
+        "/path/to/hexdocs-mcp/dist/index.js"
       ]
     }
   }
 }
 ```
+
+I'm working a way to make this easier to configure, but for now, you can use the above. ☺️
 
 ### Requirements
 
@@ -60,10 +62,9 @@ This is also configurable in the MCP configuration for the server:
 {
   "mcpServers": {
     "hexdocs-mcp": {
-      "command": "npx",
+      "command": "...",
       "args": [
-        "-y",
-        "hexdocs-mcp"
+        "..."
       ],
       "env": {
         "HEXDOCS_MCP_PATH": "/path/to/custom/directory"
