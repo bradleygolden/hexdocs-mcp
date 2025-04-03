@@ -78,13 +78,7 @@ This is also configurable in the MCP configuration for the server:
 
 ### Elixir Package
 
-If you're using the Elixir package directly (without the MCP server), initialize the SQLite database:
-
-```bash
-mix hex.docs.mcp init
-```
-
-> **Note:** When using the MCP server, this initialization step is not needed as the database is automatically created when the server starts.
+The SQLite database for vector storage and retrieval is created automatically when needed.
 
 Fetch documentation, process, and generate embeddings for a package:
 

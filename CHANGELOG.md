@@ -12,12 +12,12 @@ Initial release of HexDocs MCP, providing semantic search capabilities for Hex p
 ### Added
 
 #### Elixir Package
-- `mix hex.docs.mcp init` command to initialize SQLite database with vector search capabilities
 - `mix hex.docs.mcp fetch` command to:
   - Download Hex package documentation
   - Convert HTML docs to consolidated markdown
   - Create semantic text chunks
   - Generate embeddings using Ollama
+  - Automatically initialize SQLite database with vector search capabilities when needed
 - `mix hex.docs.mcp search` command for semantic search in embeddings
 - Support for custom embedding models via `--model` flag
 - Configurable data storage location via `HEXDOCS_MCP_PATH` environment variable
@@ -26,7 +26,7 @@ Initial release of HexDocs MCP, providing semantic search capabilities for Hex p
 - Model Context Protocol (MCP) server implementation
 - Integration with MCP-compatible clients (Cursor, Claude Desktop App, etc.)
 - Vector similarity search using SQLite database
-- Automatic database initialization (no need to run `mix hex.docs.mcp init` when using the MCP server)
+- Automatic database initialization on startup
 
 ### Dependencies
 - Requires Elixir 1.16 or later

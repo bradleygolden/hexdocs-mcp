@@ -11,7 +11,7 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
 
       $ mix hex.docs.mcp COMMAND [options] PACKAGE [VERSION]
 
-  * `COMMAND` - Either `fetch`, `search`, or `init` (required)
+  * `COMMAND` - Either `fetch` or `search` (required)
   * `PACKAGE` - Hex package name to work with (required for fetch/search)
   * `VERSION` - Package version to work with (optional, defaults to latest)
 
@@ -22,7 +22,6 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
 
   ## Examples
 
-      $ mix hex.docs.mcp init                        # Initialize the database
       $ mix hex.docs.mcp fetch phoenix              # Download, chunk docs and generate embeddings
       $ mix hex.docs.mcp fetch --model all-minilm phoenix   # Use custom model for embeddings
       $ mix hex.docs.mcp search --query "channels" phoenix  # Search in existing embeddings
@@ -32,18 +31,12 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
       $ mix hex.docs.mcp --query "channels" phoenix  # Equivalent to search command
       $ mix hex.docs.mcp phoenix                     # Equivalent to fetch command
 
-  The init command:
-  1. Creates the database and required tables
-  2. Sets up necessary indexes for vector search
-
-  Note: The init command is only required when using the Elixir package directly.
-  When using the MCP server, the database is initialized automatically.
-
   The fetch command:
   1. Downloads docs using mix hex.docs
   2. Converts HTML to a single markdown file
   3. Chunks the markdown text for embedding in vector databases
   4. Generates embeddings using Ollama
+  5. Automatically creates the database if it doesn't exist
 
   The search command:
   1. Looks up existing embeddings for the specified package
@@ -51,17 +44,15 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
   3. Returns the most relevant results
   """
 
-  def run(["init" | _args]) do
-    HexdocsMcp.CLI.init_database()
-  end
-
   def run(["fetch" | args]) do
     %{package: package, version: version, model: model} = parse_args!(args)
+    ensure_database_initialized()
     HexdocsMcp.CLI.process_docs(package, version, model)
   end
 
   def run(["search" | args]) do
     %{package: package, version: version, model: model, search: search} = parse_args!(args)
+    ensure_database_initialized()
     HexdocsMcp.CLI.search(search, package, version, model)
   end
 
@@ -71,11 +62,30 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
 
   def run(args) do
     %{package: package, version: version, model: model, search: search} = parse_args!(args)
+    ensure_database_initialized()
 
     if search do
       HexdocsMcp.CLI.search(search, package, version, model)
     else
       HexdocsMcp.CLI.process_docs(package, version, model)
+    end
+  end
+  
+  # Check if database is initialized and initialize if not
+  defp ensure_database_initialized do
+    try do
+      # Try executing a simple query against the embeddings table
+      HexdocsMcp.Repo.query!("SELECT 1 FROM embeddings LIMIT 1")
+    rescue
+      # If the table doesn't exist, initialize the database
+      error in Exqlite.Error ->
+        if error.message =~ "no such table" do
+          Mix.shell().info("Database not initialized. Running initialization...")
+          HexdocsMcp.CLI.init_database()
+        else
+          # Re-raise if it's a different error
+          reraise error, __STACKTRACE__
+        end
     end
   end
 
