@@ -26,7 +26,7 @@ Add this to your client's MCP json config:
 ```json
 {
   "mcpServers": {
-    "hexdocs-mcp-server": {
+    "hexdocs-mcp": {
       "command": "npx",
       "args": [
         "-y",
@@ -59,7 +59,7 @@ This is also configurable in the MCP configuration for the server:
 ```json
 {
   "mcpServers": {
-    "hexdocs-mcp-server": {
+    "hexdocs-mcp": {
       "command": "npx",
       "args": [
         "-y",
