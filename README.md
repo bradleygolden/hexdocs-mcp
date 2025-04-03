@@ -12,9 +12,24 @@ HexDocs MCP is a project that provides semantic search capabilities for Hex pack
 ```elixir
 def deps do
   [
-    {:hexdocs_mcp, "~> 0.1.0", only: :dev}
+    {:hexdocs_mcp, "~> 0.1.0", only: :dev, runtime: false}
   ]
 end
+```
+
+And if you use floki or any other dependencies that are marked as only available in
+another environment, update them to be available in the `:dev` environment as well.
+
+For example floki is commonly used in `:test`:
+
+```elixir
+{:floki, ">= 0.30.0", only: :test}
+```
+
+But you can update it to be available in the :dev environment:
+
+```elixir
+{:floki, ">= 0.30.0", only: [:dev, :test]}
 ```
 
 ### MCP Client Configuration
