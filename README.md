@@ -152,18 +152,17 @@ This project uses [mise](https://mise.jdx.dev/) (formerly rtx) to manage develop
 
 3. Setup dependencies:
    ```bash
-   mise run setup_elixir
-   mise run setup_ts
+   mise build
    ```
 
 ### Development Tasks
 
 Mise defines several useful development tasks:
 
-- `mise run build` - Build both Elixir and TypeScript components
-- `mise run test` - Run all tests
-- `mise run mcp_inspect` - Start the MCP inspector for testing the server
-- `mise run start_mcp_server` - Start the MCP server (primarily for debugging)
+- `mise build` - Build both Elixir and TypeScript components
+- `mise test` - Run all tests
+- `mise mcp_inspect` - Start the MCP inspector for testing the server
+- `mise start_mcp_server` - Start the MCP server (primarily for debugging)
 
 ### Without Mise
 
@@ -188,6 +187,10 @@ npm run build
 # Instead of mise run test
 mix test
 mix format --check-formatted
+mix deps --check-unused
+mix deps.unlock --all
+mix deps.get
+mix test
 
 # Instead of mise run mcp_inspect
 MCP_INSPECTOR=true npx @modelcontextprotocol/inspector node dist/index.js
