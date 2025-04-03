@@ -1,15 +1,13 @@
 # HexDocs MCP
 
-HexDocs MCP is a wrapper around the `mix hex.docs` command that adds functionality for generating embeddings from Hex package documentation. These embeddings are specifically designed for use in AI applications, specifically for MCP servers in this use case.
+HexDocs MCP is a project that provides semantic search capabilities for Hex package documentation, designed specifically for AI applications. It consists of two main components:
 
-## Components
-
-The project consists of two main components:
-
-1. **Elixir HexDocs Mcp (this project)** - Downloads, processes and embeds Hex package documentation
-2. [**HexDocs MCP Server**](https://github.com/bradleygolden/hexdocs-mcp-server) - A TypeScript implementation of the Model Context Protocol (MCP) that provides a searchable interface to the embeddings in an easily installable format via `npx`
+1. An Elixir package that downloads, processes, and generates embeddings from Hex package documentation
+2. A TypeScript server implementing the Model Context Protocol (MCP) that provides a searchable interface to the embeddings
 
 ## Installation
+
+### Elixir Package
 
 ```elixir
 def deps do
@@ -19,89 +17,103 @@ def deps do
 end
 ```
 
+### MCP Client Configuration
+
+The TypeScript MCP server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) and is designed to be used by MCP-compatible clients such as Cursor, Claude Desktop App, Continue, and others. The server provides tools for semantic search of Hex documentation. For a complete list of MCP-compatible clients, see the [MCP Clients documentation](https://modelcontextprotocol.io/clients).
+
+Add this to your client's MCP json config:
+
+```json
+{
+  "mcpServers": {
+    "hexdocs-mcp-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "hexdocs-mcp"
+      ]
+    }
+  }
+}
+```
+
 ### Requirements
 
 - [Ollama](https://ollama.ai) - Required for generating embeddings
   - Run `ollama pull nomic-embed-text` to download the recommended embedding model
-  - Ensure Ollama is running before using hexdocs_mcp with embedding features
+  - Ensure Ollama is running before using the embedding features
+- Elixir 1.16+
+- Node.js 22 or later (for the MCP server)
 
 ## Configuration
 
-By default, HexDocs MCP stores all data in `~/.hexdocs_mcp` in the user's home directory. You can change this location by setting the `HEXDOCS_MCP_PATH` environment variable:
+By default, the `mix hex.docs.mcp fetch` command stores all data in `~/.hexdocs_mcp` in the user's home directory. You can change this location by setting the `HEXDOCS_MCP_PATH` environment variable:
 
 ```bash
 # Example: Set custom storage location
 export HEXDOCS_MCP_PATH=/path/to/custom/directory
 ```
 
-## Usage
-
-Start by initializing the sqlite database used to store embeddings:
-
-```
-$ mix hex.docs.mcp init
-```
-
-Fetch documentation, process, and generate embeddings for a package:
-
-```
-$ mix hex.docs.mcp fetch phoenix
-```
-
-Fetch documentation for a specific version:
-
-```
-$ mix hex.docs.mcp fetch phoenix 1.5.9
-```
-
-Use a specific embedding model when fetching:
-
-```
-$ mix hex.docs.mcp fetch --model all-minilm phoenix
-```
-
-Search in the existing embeddings:
-
-```
-$ mix hex.docs.mcp search --query "channels" phoenix
-```
-
-## Features
-
-- Downloads package documentation using Hex
-- Converts all HTML files to a single consolidated markdown file
-- Creates semantic text chunks suitable for vector embedding and retrieval
-- Adds metadata to each chunk (package, version, source file)
-- Organizes files by package name for easy management
-- Preserves file structure information in the markdown
-- Handles latest version detection if no version is specified
-- Generates embeddings using open source models via Ollama
-- Supports semantic search in the generated embeddings
-- Flexible model selection for different embedding quality/performance tradeoffs
-
-## Pro Tip
-
-When you're vibing with an agent and you find that you don't have the given documentation for a specific tool, you can have the AI run the `mix hex.docs.mcp fetch ...` command for you so you don't have to.
-
-## Chunk Format
-
-The generated chunks are stored as JSON files with the following structure or similar:
+This is also configurable in the MCP configuration for the server:
 
 ```json
 {
-  "text": "The chunk content...",
-  "metadata": {
-    "package": "package_name",
-    "version": "version",
-    "source_file": "path/to/original/file.html",
-    "source_type": "hexdocs",
-    "start_byte": 0,
-    "end_byte": 100
+  "mcpServers": {
+    "hexdocs-mcp-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "hexdocs-mcp"
+      ],
+      "env": {
+        "HEXDOCS_MCP_PATH": "/path/to/custom/directory"
+      }
+    }
   }
 }
 ```
 
-These chunks can be directly used for vector embeddings in systems like OpenAI, PostgreSQL pgvector, or other vector databases.
+## Usage
+
+### Elixir Package
+
+Start by initializing the sqlite database used to store embeddings:
+
+```bash
+mix hex.docs.mcp init
+```
+
+Fetch documentation, process, and generate embeddings for a package:
+
+```bash
+mix hex.docs.mcp fetch phoenix
+```
+
+Fetch documentation for a specific version:
+
+```bash
+mix hex.docs.mcp fetch phoenix 1.5.9
+```
+
+Use a specific embedding model when fetching:
+
+```bash
+mix hex.docs.mcp fetch --model all-minilm phoenix
+```
+
+Search in the existing embeddings:
+
+```bash
+mix hex.docs.mcp search --query "channels" phoenix
+```
+
+### Pro Tip
+
+When you need documentation for a specific package you don't have already, you can have the AI run the `mix hex.docs.mcp fetch` command for you.
+
+## Acknowledgements
+
+- [hex2text](https://github.com/mjrusso/hex2txt) - For the initial idea and as a reference
 
 ## Contributing
 

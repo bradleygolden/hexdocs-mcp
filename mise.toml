@@ -1,2 +1,39 @@
 [tools]
-node = "20"
+elixir = "1.18"
+node = "22"
+
+# high level tasks
+
+[tasks.build]
+run = ""
+depends = ["build_elixir", "build_ts"]
+
+[tasks.test]
+run = ""
+depends = ["test_elixir"]
+
+# low level tasks
+
+[tasks.setup_elixir]
+run = "mix setup"
+
+[tasks.setup_ts]
+run = "npm i"
+
+[tasks.build_elixir]
+run = "mix compile --no-optional-deps --warnings-as-errors"
+depends = ["setup_elixir"]
+
+[tasks.build_ts]
+run = "npm run prepare"
+depends = ["setup_ts"]
+
+[tasks.test_elixir]
+run = ""
+depends = ["mix_test", "mix_format_check"]
+
+[tasks.mix_test]
+run = "mix test"
+
+[tasks.mix_format_check]
+run = "mix format --check-formatted"
