@@ -1,16 +1,31 @@
 #!/usr/bin/env node
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+    CallToolRequestSchema,
+    ListToolsRequestSchema,
+    ToolSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import * as path from "path";
 import * as os from "os";
-import * as fs from "fs";
+import * as fs from "fs/promises";
+import { existsSync, mkdirSync } from "fs";
 import BetterSqlite3 from "better-sqlite3";
 import { Ollama } from "ollama";
 import * as sqliteVec from "sqlite-vec";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
-// Define types for our database rows
+// Define parameter schemas using zod
+const VectorSearchSchema = z.object({
+    query: z.string().describe("The search query to find relevant documentation"),
+    packageName: z.string().describe("The Hex package name to search within"),
+    version: z.string().optional().describe("Optional package version, defaults to latest"),
+    limit: z.number().optional().default(5).describe("Maximum number of results to return")
+});
+
+// Types
 interface PackageRow {
     package: string;
 }
@@ -24,167 +39,332 @@ interface SearchResult {
     score: number;
 }
 
-// Get home directory or custom path from environment
-const homedir = os.homedir();
-const hexdocsPath = process.env.HEXDOCS_MCP_PATH || path.join(homedir, '.hexdocs_mcp');
-const defaultDbPath = path.join(hexdocsPath, 'hexdocs_mcp.db');
-
-// Parse command line arguments
-const args = process.argv.slice(2);
-const dbPath = args[0] || defaultDbPath;
-
-// Ensure the directory exists
-if (!fs.existsSync(path.dirname(dbPath))) {
-    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-    process.stderr.write(`Created directory for database at: ${path.dirname(dbPath)}\n`);
-}
-
-// Create MCP server for providing Hex documentation search capabilities
-// Use stderr for logging since stdout is used for JSON communication
-process.stderr.write("Initializing MCP server...\n");
-const server = new McpServer({
-    name: "HexdocsMCP",
-    version: "0.1.0",
-    description: "MCP server for searching Elixir Hex package documentation using embeddings"
-});
-
-// Initialize database connection with lazy initialization
+// Global vars
 let db: BetterSqlite3.Database;
-try {
-    const dbExists = fs.existsSync(dbPath);
-    db = new BetterSqlite3(dbPath);
+let ollama: Ollama;
 
-    // Initialize the schema if database is new
-    if (!dbExists) {
-        process.stderr.write(`Initializing new database at: ${dbPath}\n`);
-        db.exec(`
-            CREATE TABLE IF NOT EXISTS embeddings(
-                id INTEGER PRIMARY KEY,
-                package TEXT NOT NULL,
-                version TEXT NOT NULL,
-                source_file TEXT NOT NULL,
-                source_type TEXT,
-                start_byte INTEGER,
-                end_byte INTEGER,
-                text_snippet TEXT,
-                text TEXT NOT NULL,
-                embedding BLOB NOT NULL,
-                inserted_at TIMESTAMP,
-                updated_at TIMESTAMP,
-                UNIQUE(package, version, source_file, text_snippet)
-            );
-            CREATE INDEX IF NOT EXISTS idx_embeddings_package_version ON embeddings(package, version);
-        `);
+// Get database path
+const getDbPath = () => {
+    const homedir = os.homedir();
+    const hexdocsPath = process.env.HEXDOCS_MCP_PATH || path.join(homedir, '.hexdocs_mcp');
+    const defaultDbPath = path.join(hexdocsPath, 'hexdocs_mcp.db');
+
+    // Parse command line arguments
+    const args = process.argv.slice(2);
+    const dbPath = args[0] || defaultDbPath;
+
+    return { hexdocsPath, dbPath };
+};
+
+// Initialize database
+const initializeDatabase = async (dbPath: string) => {
+    try {
+        // Ensure directory exists
+        const dirPath = path.dirname(dbPath);
+        if (!existsSync(dirPath)) {
+            mkdirSync(dirPath, { recursive: true });
+            console.error(`Created directory for database at: ${dirPath}`);
+        }
+
+        const dbExists = existsSync(dbPath);
+        db = new BetterSqlite3(dbPath);
+
+        // Initialize the schema if database is new
+        if (!dbExists) {
+            console.error(`Initializing new database at: ${dbPath}`);
+            db.exec(`
+        CREATE TABLE IF NOT EXISTS embeddings(
+          id INTEGER PRIMARY KEY,
+          package TEXT NOT NULL,
+          version TEXT NOT NULL,
+          source_file TEXT NOT NULL,
+          source_type TEXT,
+          start_byte INTEGER,
+          end_byte INTEGER,
+          text_snippet TEXT,
+          text TEXT NOT NULL,
+          embedding BLOB NOT NULL,
+          inserted_at TIMESTAMP,
+          updated_at TIMESTAMP,
+          UNIQUE(package, version, source_file, text_snippet)
+        );
+        CREATE INDEX IF NOT EXISTS idx_embeddings_package_version ON embeddings(package, version);
+      `);
+        }
+
+        // Load SQLite vector extension
+        sqliteVec.load(db);
+
+        return true;
+    } catch (error) {
+        console.error(`Error initializing database: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return false;
     }
-} catch (error) {
-    process.stderr.write(`Error initializing database: ${error instanceof Error ? error.message : 'Unknown error'}\n`);
-    process.exit(1);
-}
-
-// Load SQLite vector extension
-sqliteVec.load(db);
-
-// Initialize Ollama client
-const ollama = new Ollama();
-
-// Define the vector search parameters schema
-const vectorSearchParams = {
-    query: z.string().describe("The search query to find relevant documentation"),
-    packageName: z.string().describe("The Hex package name to search within"),
-    version: z.string().optional().describe("Optional package version, defaults to latest"),
-    limit: z.number().optional().default(5).describe("Maximum number of results to return")
 };
 
-type VectorSearchInput = {
-    query: string;
-    packageName: string;
-    version?: string;
-    limit: number;
-};
-
-// Register the package list resource
-server.resource(
-    "packages",
-    "packages://list",
-    async () => {
+// List packages tool handler
+const listPackagesHandler = async () => {
+    try {
+        // Check if db is initialized
+        if (!db) {
+            throw new Error("Database not initialized");
+        }
+        
+        // Get the packages from the database
         const packages = db.prepare("SELECT DISTINCT package FROM embeddings").all() as PackageRow[];
+        
+        // Return an object with the packages array
+        // If there are no packages, return an empty array rather than failing
         return {
-            contents: [{
-                uri: "packages://list",
-                text: JSON.stringify(packages.map(p => p.package))
-            }]
+            packages: packages.map(p => p.package) || []
         };
+    } catch (error) {
+        console.error(`Error listing packages: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new Error(`Failed to list packages: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-);
+};
 
-// Register the vector search tool
-server.tool(
-    "vector_search",
-    vectorSearchParams,
-    async ({ query, packageName, version, limit }: VectorSearchInput) => {
-        try {
-            // Get query embedding from Ollama
-            const queryEmbedding = await ollama.embeddings({
-                model: "nomic-embed-text",
-                prompt: query
-            });
+// Vector search tool handler
+const vectorSearchHandler = async (params: z.infer<typeof VectorSearchSchema>) => {
+    try {
+        // Check if db and ollama are initialized
+        if (!db) {
+            throw new Error("Database not initialized");
+        }
+        
+        if (!ollama) {
+            throw new Error("Ollama client not initialized");
+        }
+        
+        const { query, packageName, version, limit } = params;
 
-            // Prepare SQL query to get embeddings and content
-            let sql = `
-                SELECT 
-                    e.id,
-                    e.package,
-                    e.version,
-                    e.source_file,
-                    e.text,
-                    vec_distance_L2(e.embedding, ?) as score
-                FROM embeddings e
-                WHERE e.package = ?
-            `;
+        // Get query embedding from Ollama
+        console.error(`Getting embedding for query: "${query}"`);
+        const queryEmbedding = await ollama.embeddings({
+            model: "nomic-embed-text",
+            prompt: query
+        });
 
-            // Convert embedding to binary format for SQLite
-            const embeddingBuffer = Buffer.from(new Float32Array(queryEmbedding.embedding).buffer);
-            const params: any[] = [embeddingBuffer, packageName];
+        if (!queryEmbedding || !queryEmbedding.embedding) {
+            throw new Error("Failed to generate embedding for query");
+        }
 
-            if (version && version !== "latest") {
-                sql += " AND e.version = ?";
-                params.push(version);
+        // Prepare SQL query
+        let sql = `
+      SELECT 
+        e.id,
+        e.package,
+        e.version,
+        e.source_file,
+        e.text,
+        vec_distance_L2(e.embedding, ?) as score
+      FROM embeddings e
+      WHERE e.package = ?
+    `;
+
+        // Convert embedding to binary format for SQLite
+        const embeddingBuffer = Buffer.from(new Float32Array(queryEmbedding.embedding).buffer);
+        const sqlParams: any[] = [embeddingBuffer, packageName];
+
+        if (version && version !== "latest") {
+            sql += " AND e.version = ?";
+            sqlParams.push(version);
+        }
+
+        sql += " ORDER BY score LIMIT ?";
+        sqlParams.push(limit || 5);
+        
+        console.error(`Executing query for package: ${packageName}, version: ${version || 'latest'}, limit: ${limit || 5}`);
+
+        // Get all relevant embeddings
+        const rows = db.prepare(sql).all(...sqlParams) as SearchResult[];
+        console.error(`Found ${rows.length} results`);
+
+        // Format results
+        const results = rows.map(row => ({
+            source_file: row.source_file,
+            version: row.version,
+            relevance: (1 - row.score).toFixed(3),
+            text: row.text
+        }));
+
+        return {
+            results: results || [],
+            count: results.length
+        };
+    } catch (error) {
+        console.error(`Error during vector search: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new Error(`Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+};
+
+// Main function
+async function main() {
+    // Get paths
+    const { dbPath } = getDbPath();
+
+    // Initialize DB
+    console.error("Initializing database connection...");
+    const dbInitialized = await initializeDatabase(dbPath);
+    if (!dbInitialized) {
+        process.exit(1);
+    }
+
+    // Initialize Ollama client
+    console.error("Initializing Ollama client...");
+    ollama = new Ollama();
+
+    // Create MCP server
+    console.error("Initializing MCP server...");
+    const server = new Server(
+        {
+            name: "HexdocsMCP",
+            version: "0.1.0",
+            description: "MCP server for searching Elixir Hex package documentation using embeddings"
+        },
+        {
+            capabilities: {
+                tools: {}, // Indicates support for tools
             }
+        }
+    );
 
-            sql += " ORDER BY score LIMIT ?";
-            params.push(limit);
+    // Register tools
+    // For the Server class, we need to use a different approach
 
-            // Get all relevant embeddings
-            const rows = db.prepare(sql).all(...params) as SearchResult[];
+    // Set up handler for tool calls
+    server.setRequestHandler(CallToolRequestSchema, async (request) => {
+        if (!request.params) {
+            throw new Error("Parameters are required");
+        }
 
-            // Format results for display
-            const formattedResults = rows.map(row =>
-                `Source: ${row.source_file} (v${row.version})\nRelevance: ${(1 - row.score).toFixed(3)}\n\n${row.text}\n---\n`
-            ).join('\n');
+        const { name, params = {} } = request.params;
 
-            return {
-                content: [{
-                    type: "text",
-                    text: formattedResults || "No relevant results found."
-                }]
-            };
+        if (name === "list_packages") {
+            try {
+                console.error(`Received list_packages request`);
+                const result = await listPackagesHandler();
+                return { 
+                    result: result,
+                    status: "success" 
+                };
+            } catch (error) {
+                console.error(`List packages error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                return { 
+                    error: `Failed to list packages: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    status: "error"
+                };
+            }
+        }
+        else if (name === "vector_search") {
+            try {
+                // Check if we have arguments or params
+                const args = request.params.arguments || params;
+                console.error(`Received vector_search request with args: ${JSON.stringify(args)}`);
+                
+                // Parse and validate params
+                const parsedParams = VectorSearchSchema.parse(args);
+                const result = await vectorSearchHandler(parsedParams);
+                return { 
+                    result: result,
+                    status: "success" 
+                };
+            } catch (error) {
+                console.error(`Vector search error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                return { 
+                    error: `Failed to perform search: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    status: "error"
+                };
+            }
+        }
+
+        throw new Error(`Unknown tool: ${name}`);
+    });
+
+    // Set up handler for listing tools
+    server.setRequestHandler(ListToolsRequestSchema, async () => {
+        return {
+            tools: [
+                {
+                    name: "list_packages",
+                    description: 
+                        "List all Hex packages that have documentation available in the database. " +
+                        "This tool provides a comprehensive inventory of packages whose documentation " +
+                        "has been processed and embedded for semantic search. " +
+                        "Use this tool first to discover which packages are available before " +
+                        "performing searches. If a package you need isn't listed, you'll need to " +
+                        "fetch it using the Elixir mix command: `mix hex.docs.mcp fetch PACKAGE`. " +
+                        "Returns an array of package names that can be used with the vector_search tool.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {}
+                    },
+                    parameters: zodToJsonSchema(z.object({}))
+                },
+                {
+                    name: "vector_search",
+                    description: 
+                        "Perform semantic search within Elixir Hex package documentation using vector embeddings. " +
+                        "This tool uses embeddings generated from package documentation to find semantically " +
+                        "relevant content based on your query, not just exact keyword matches. " +
+                        "\n\n" +
+                        "Usage guidelines:" +
+                        "\n- Use specific, focused queries for best results" +
+                        "\n- The packageName must be a package that exists in the database (use list_packages to check)" +
+                        "\n- If results aren't relevant, try rephrasing your query or using more domain-specific terms" +
+                        "\n- For packages not in the database, suggest fetching them with: `mix hex.docs.mcp fetch PACKAGE`" +
+                        "\n\n" +
+                        "Results include source file, version, relevance score, and the matching text snippet. " +
+                        "This tool helps you quickly find relevant documentation without having to browse " +
+                        "through the entire package documentation.",
+                    inputSchema: {
+                        type: "object",
+                        properties: {
+                            query: {
+                                type: "string",
+                                description: "The semantic search query to find relevant documentation (can be natural language, not just keywords)"
+                            },
+                            packageName: {
+                                type: "string",
+                                description: "The Hex package name to search within (must be a package that has been fetched)"
+                            },
+                            version: {
+                                type: "string",
+                                description: "Optional specific package version to search within, defaults to latest fetched version"
+                            },
+                            limit: {
+                                type: "number",
+                                description: "Maximum number of results to return (default: 5, increase for more comprehensive results)",
+                                default: 5
+                            }
+                        },
+                        required: ["query", "packageName"]
+                    },
+                    parameters: zodToJsonSchema(VectorSearchSchema)
+                }
+            ]
+        };
+    });
+
+    // Start the server with reconnection handling
+    console.error("Starting server...");
+    const transport = new StdioServerTransport();
+
+    async function connectWithRetry() {
+        try {
+            await server.connect(transport);
+            console.error("Connected to transport");
         } catch (error) {
-            process.stderr.write(`Error during vector search: ${error instanceof Error ? error.message : 'Unknown error'}\n`);
-            return {
-                content: [{
-                    type: "text",
-                    text: `Error performing search: ${error instanceof Error ? error.message : 'Unknown error'}`
-                }],
-                isError: true
-            };
+            console.error(`Connection error: ${error instanceof Error ? error.message : 'Unknown error'}, retrying in 5s...`);
+            setTimeout(connectWithRetry, 5000);
         }
     }
-);
 
-// Start the server in stdio mode
-process.stderr.write("Starting server in stdio mode\n");
-const transport = new StdioServerTransport();
-server.connect(transport).catch(error => {
-    process.stderr.write(`Error connecting server to transport: ${error instanceof Error ? error.message : 'Unknown error'}\n`);
+    connectWithRetry();
+}
+
+// Run the main function
+main().catch(error => {
+    console.error(`Unhandled error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     process.exit(1);
 });

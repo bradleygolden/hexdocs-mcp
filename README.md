@@ -207,21 +207,19 @@ You can find sample custom instructions in the repository:
 ```
 When working with Elixir projects that use Hex packages:
 
-## Documentation Lookup
+## HexDocs MCP Workflow
 
-1. First try looking up documentation using the hexdocs-mcp vector_search tool if available
-2. If documentation isn't found, suggest fetching them with:
-   - Basic usage: `mix hex.docs.mcp fetch PACKAGE`
-   - Specific version: `mix hex.docs.mcp fetch PACKAGE VERSION`
-   - Custom model: `mix hex.docs.mcp fetch --model all-minilm PACKAGE`
-3. After fetching, search with `mix hex.docs.mcp search --query "your query" PACKAGE`
+1. Use `list_packages` to see what documentation is available
+2. Use `vector_search` to find relevant documentation
+3. For packages not in the database, fetch them with:
+   - `mix hex.docs.mcp fetch PACKAGE`
+   - For specific versions: `mix hex.docs.mcp fetch PACKAGE VERSION`
 
-## HexDocs MCP Usage Tips
+## Environment Setup
 
-- The SQLite database for vector storage is created automatically when needed
-- Default data location is `~/.hexdocs_mcp` unless HEXDOCS_MCP_PATH is set
 - Requires Ollama running with nomic-embed-text model pulled
-- For MCP-compatible editors, suggest configuring the HexDocs MCP server
+- Default data location: `~/.hexdocs_mcp` (configurable via HEXDOCS_MCP_PATH)
+- The SQLite database is created automatically when needed
 ```
 
 ## Contributing
