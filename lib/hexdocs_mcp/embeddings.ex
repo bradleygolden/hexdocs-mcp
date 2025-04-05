@@ -1,7 +1,19 @@
+defmodule HexdocsMcp.EmbeddingsBehaviour do
+  @moduledoc """
+  Behaviour for the Embeddings module - used primarily for mocking in tests
+  """
+  
+  @callback embeddings_exist?(package :: String.t(), version :: String.t() | nil) :: boolean()
+  @callback delete_embeddings(package :: String.t(), version :: String.t() | nil) :: 
+              {:ok, non_neg_integer()}
+end
+
 defmodule HexdocsMcp.Embeddings do
   @moduledoc """
   Functions for generating embeddings from markdown chunks using Ollama.
   """
+  
+  @behaviour HexdocsMcp.EmbeddingsBehaviour
 
   require Logger
   alias Jason
@@ -279,5 +291,51 @@ defmodule HexdocsMcp.Embeddings do
         }
       }
     end)
+  end
+
+  @doc """
+  Check if embeddings exist for a package and version.
+
+  ## Parameters
+    * `package` - The name of the package
+    * `version` - The version of the package or "latest"
+
+  ## Returns
+    * `true` - Embeddings exist
+    * `false` - No embeddings exist
+  """
+  @impl HexdocsMcp.EmbeddingsBehaviour
+  def embeddings_exist?(package, version) do
+    version = version || "latest"
+
+    query =
+      from e in Embedding,
+        where: e.package == ^package and e.version == ^version,
+        select: count(e.id),
+        limit: 1
+
+    Repo.one(query) > 0
+  end
+
+  @doc """
+  Delete all embeddings for a package and version.
+
+  ## Parameters
+    * `package` - The name of the package
+    * `version` - The version of the package or "latest"
+
+  ## Returns
+    * `{:ok, count}` - The number of embeddings deleted
+  """
+  @impl HexdocsMcp.EmbeddingsBehaviour
+  def delete_embeddings(package, version) do
+    version = version || "latest"
+
+    query =
+      from e in Embedding,
+        where: e.package == ^package and e.version == ^version
+
+    {count, _} = Repo.delete_all(query)
+    {:ok, count}
   end
 end

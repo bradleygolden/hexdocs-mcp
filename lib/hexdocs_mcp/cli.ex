@@ -1,7 +1,18 @@
+defmodule HexdocsMcp.CLIBehaviour do
+  @moduledoc """
+  Behaviour for the CLI module - used primarily for mocking in tests
+  """
+  
+  @callback process_docs(package :: String.t(), version :: String.t() | nil, model :: String.t()) :: 
+              map()
+end
+
 defmodule HexdocsMcp.CLI do
   @moduledoc """
   Core functionality for Hex documentation processing via command line.
   """
+  
+  @behaviour HexdocsMcp.CLIBehaviour
 
   alias HexdocsMcp.CLI.Progress
   alias HexdocsMcp.{Repo, Migrations, Markdown}
@@ -17,15 +28,59 @@ defmodule HexdocsMcp.CLI do
   end
 
   @doc """
-  Process documentation for a package and optionally generate embeddings.
+  Fetch and process documentation for a package with caching and force functionality.
+
+  ## Parameters
+    * `package` - The package name
+    * `version` - The package version (or "latest")
+    * `model` - The embedding model to use
+    * `opts` - Options including:
+      * `:force` - Boolean to force regeneration of embeddings (default: false)
+
+  ## Returns
+    * Map containing result information
   """
+  def fetch_and_process_docs(package, version, model, opts \\ []) do
+    force = Keyword.get(opts, :force, false)
+    embeddings_module = Application.get_env(:hexdocs_mcp, :embeddings_module, HexdocsMcp.Embeddings)
+    cli_module = Application.get_env(:hexdocs_mcp, :cli_module, HexdocsMcp.CLI)
+
+    if not force && embeddings_module.embeddings_exist?(package, version) do
+      Mix.shell().info(
+        "#{check()} Embeddings for #{package} #{version || "latest"} already exist, skipping fetch."
+      )
+
+      Mix.shell().info("  Use --force to re-fetch and update embeddings.")
+
+      %{
+        package: package,
+        version: version || "latest",
+        cached: true
+      }
+    else
+      if force && embeddings_module.embeddings_exist?(package, version) do
+        {:ok, count} = embeddings_module.delete_embeddings(package, version)
+
+        Mix.shell().info(
+          "#{check()} Removed #{count} existing embeddings for #{package} #{version || "latest"}."
+        )
+      end
+
+      cli_module.process_docs(package, version, model)
+    end
+  end
+
+  @doc """
+  Process documentation for a package and optionally generate embeddings.
+
+  @impl HexdocsMcp.CLIBehaviour
+  """
+  @impl HexdocsMcp.CLIBehaviour
   def process_docs(package, version, model) do
     alias HexdocsMcp.CLI.Progress
 
-    # Simple, minimal status updates
     ensure_markdown_dir!(package)
 
-    # Fetch docs - quiet output
     Mix.shell().info(
       "Fetching documentation for #{package}#{if version, do: " #{version}", else: ""}..."
     )
@@ -33,23 +88,18 @@ defmodule HexdocsMcp.CLI do
     docs_path = execute_docs_fetch_quietly(package, version)
     verify_docs_path!(docs_path)
 
-    # Prepare file paths and convert HTML
     output_file = create_markdown_file(package, version)
     html_files = find_html_files(docs_path)
     verify_html_files!(html_files, docs_path)
 
-    # Simple status without spinner
     Mix.shell().info("Converting #{length(html_files)} HTML files to markdown...")
     convert_html_files_to_markdown(html_files, output_file)
 
-    # Prepare chunking
     chunks_dir = prepare_chunks_dir(package)
 
-    # Create chunks - simple status
     Mix.shell().info("Creating semantic text chunks...")
     chunk_count = create_text_chunks(output_file, chunks_dir, package, version)
 
-    # Generate embeddings - show progress bar only for this step
     Mix.shell().info("Generating embeddings using #{model}...")
 
     {:ok, embed_count} =
@@ -59,8 +109,6 @@ defmodule HexdocsMcp.CLI do
         model,
         progress_callback: create_embedding_progress_callback()
       )
-
-    # Summary info
     Mix.shell().info("#{check()} Processing completed:")
     Mix.shell().info("  • Docs location: #{docs_path}")
     Mix.shell().info("  • Markdown file: #{output_file}")
@@ -87,14 +135,10 @@ defmodule HexdocsMcp.CLI do
   def search(query, package, version, model) do
     alias HexdocsMcp.CLI.Progress
 
-    # Print minimal header for context
     Mix.shell().info("Searching for \"#{query}\" in #{package} #{version || "latest"}...")
 
-    # Simple progress for search with progress bar only
     progress_callback = create_search_progress_callback()
     results = perform_search(query, package, version, model, progress_callback)
-
-    # Display results
     display_search_results(results, package, version)
     results
   end
@@ -121,9 +165,6 @@ defmodule HexdocsMcp.CLI do
   end
 
   defp create_embedding_progress_callback do
-    # We'll use process dictionary to track progress state
-    # This is acceptable for ephemeral UI state
-
     fn current, total, step ->
       step = step || :processing
 
@@ -132,7 +173,6 @@ defmodule HexdocsMcp.CLI do
           progress_fn =
             case Process.get(:processing_progress_fn) do
               nil ->
-                # Initialize on first call with correct total
                 fn_with_total = Progress.progress_bar("Processing embeddings", total)
                 Process.put(:processing_progress_fn, fn_with_total)
                 fn_with_total
@@ -141,14 +181,12 @@ defmodule HexdocsMcp.CLI do
                 existing
             end
 
-          # Progress bar's own completion message will be shown when current == total
           progress_fn.(current)
 
         :saving ->
           progress_fn =
             case Process.get(:saving_progress_fn) do
               nil ->
-                # Initialize on first call with correct total
                 fn_with_total = Progress.progress_bar("Saving embeddings", total)
                 Process.put(:saving_progress_fn, fn_with_total)
                 fn_with_total
@@ -157,18 +195,15 @@ defmodule HexdocsMcp.CLI do
                 existing
             end
 
-          # Progress bar's own completion message will be shown when current == total
           progress_fn.(current)
 
         _ ->
-          # Default to processing
           progress_fn =
             Process.get(
               :processing_progress_fn,
               Progress.progress_bar("Processing embeddings", total)
             )
 
-          # Progress bar's own completion message will be shown when current == total
           progress_fn.(current)
       end
     end
@@ -179,7 +214,6 @@ defmodule HexdocsMcp.CLI do
       step = step || :computing
 
       if step == :computing do
-        # Get or create the progress function
         progress_fn =
           case Process.get(:search_progress_fn) do
             nil ->
@@ -191,7 +225,6 @@ defmodule HexdocsMcp.CLI do
               existing_fn
           end
 
-        # Progress bar's own completion message will be shown when current == total
         progress_fn.(current)
       end
     end
