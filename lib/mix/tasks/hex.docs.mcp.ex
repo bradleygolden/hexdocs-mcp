@@ -19,19 +19,22 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
 
       --model MODEL    - Ollama model to use for embeddings (default: nomic-embed-text)
       --query QUERY    - Query string for search command
+      --force          - Force fetch even if embeddings already exist
 
   ## Examples
 
       $ mix hex.docs.mcp fetch phoenix              # Download, chunk docs and generate embeddings
       $ mix hex.docs.mcp fetch --model all-minilm phoenix   # Use custom model for embeddings
+      $ mix hex.docs.mcp fetch --force phoenix      # Force re-fetch even if embeddings exist
       $ mix hex.docs.mcp search --query "channels" phoenix  # Search in existing embeddings
 
   The fetch command:
-  1. Downloads docs using mix hex.docs
-  2. Converts HTML to a single markdown file
-  3. Chunks the markdown text for embedding in vector databases
-  4. Generates embeddings using Ollama
-  5. Automatically creates the database if it doesn't exist
+  1. Checks if embeddings already exist (skips remaining steps if they do, unless --force is used)
+  2. Downloads docs using mix hex.docs
+  3. Converts HTML to a single markdown file
+  4. Chunks the markdown text for embedding in vector databases
+  5. Generates embeddings using Ollama
+  6. Automatically creates the database if it doesn't exist
 
   The search command:
   1. Looks up existing embeddings for the specified package
@@ -41,9 +44,11 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
 
   def run(["fetch" | args]) do
     Application.ensure_all_started(:hexdocs_mcp)
-    %{package: package, version: version, model: model} = parse_args!(args)
+    %{package: package, version: version, model: model, force: force} = parse_args!(args)
     ensure_database_initialized()
-    HexdocsMcp.CLI.process_docs(package, version, model)
+
+    # Use the new CLI function with caching
+    HexdocsMcp.CLI.fetch_and_process_docs(package, version, model, force: force)
   end
 
   def run(["search" | args]) do
@@ -59,13 +64,17 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
 
   def run(args) do
     Application.ensure_all_started(:hexdocs_mcp)
-    %{package: package, version: version, model: model, search: search} = parse_args!(args)
+
+    %{package: package, version: version, model: model, search: search, force: force} =
+      parse_args!(args)
+
     ensure_database_initialized()
 
     if search do
       HexdocsMcp.CLI.search(search, package, version, model)
     else
-      HexdocsMcp.CLI.process_docs(package, version, model)
+      # Use the new CLI function with caching
+      HexdocsMcp.CLI.fetch_and_process_docs(package, version, model, force: force)
     end
   end
 
@@ -107,11 +116,13 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
       OptionParser.parse!(args,
         aliases: [
           m: :model,
-          q: :query
+          q: :query,
+          f: :force
         ],
         strict: [
           model: :string,
-          query: :string
+          query: :string,
+          force: :boolean
         ]
       )
 
@@ -121,7 +132,8 @@ defmodule Mix.Tasks.Hex.Docs.Mcp do
       package: package,
       version: List.first(args) || "latest",
       model: opts[:model] || HexdocsMcp.Config.default_embedding_model(),
-      search: opts[:query]
+      search: opts[:query],
+      force: opts[:force] || false
     }
   end
 end
