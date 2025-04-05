@@ -218,6 +218,62 @@ When working with Elixir projects that use Hex packages:
 - The SQLite database is created automatically when needed
 ```
 
+## Release Guidelines
+
+When preparing a new release, please follow these guidelines to ensure consistency:
+
+### Version Management
+
+1. **SemVer Compliance**: Follow [Semantic Versioning](https://semver.org/) strictly:
+   - MAJOR: incompatible API changes
+   - MINOR: backward-compatible functionality
+   - PATCH: backward-compatible bug fixes
+
+2. **Version Synchronization**:
+   - Hex package version (in `mix.exs`) and npm package version (in `package.json`) MUST be identical
+   - Update both files when changing the version
+
+### Code Style
+
+1. **Formatting and Comments**:
+   - Follow the Elixir formatter rules defined in .formatter.exs
+   - Do not add comments to code unless strictly necessary for context
+   - Self-documenting code with clear function names is preferred
+   - Use module and function documentation (@moduledoc and @doc) instead of inline comments
+
+### Changelog Management
+
+1. **Update CHANGELOG.md**:
+   - Document all changes under the appropriate heading (Added, Changed, Fixed, etc.)
+   - Include the new version number and date
+   - Keep an [Unreleased] section for tracking current changes
+   - Follow the [Keep a Changelog](https://keepachangelog.com/) format
+
+2. **Entry Format**:
+   - Use present tense, imperative style (e.g., "Add feature" not "Added feature")
+   - Include issue/PR numbers where applicable
+   - Group related changes
+
+### Release Process
+
+1. **Before Release**:
+   - Run `mix test` to ensure all tests pass
+   - Run `mix format` to ensure code is properly formatted
+   - Verify CHANGELOG.md is updated
+
+2. **Release Commits**:
+   - Create a version bump commit that updates:
+     - mix.exs
+     - package.json
+     - CHANGELOG.md (move [Unreleased] to new version)
+   - Tag the commit with the version number (v0.1.0 format)
+
+3. **After Release**:
+   - Add a new [Unreleased] section to CHANGELOG.md
+   - Update version links at the bottom of CHANGELOG.md
+
+These guidelines apply to both human contributors and AI assistants working on this project.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.

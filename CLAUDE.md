@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Mix compile: `mix compile`
 - Fetch docs (with embedding): `mix hex.docs.mcp fetch PACKAGE [VERSION]`
 - Fetch with custom model: `mix hex.docs.mcp fetch --model all-minilm phoenix`
+- Force re-fetch docs: `mix hex.docs.mcp fetch --force phoenix`
 - Search in embeddings: `mix hex.docs.mcp search --query "query" phoenix`
 - Legacy mode (fetch): `mix hex.docs.mcp PACKAGE [VERSION]`
 - Legacy mode (search): `mix hex.docs.mcp --query "query" phoenix`
@@ -22,4 +23,5 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Function Organization**: Private functions follow public functions they support
 - **Logging**: Use Logger with appropriate levels (debug, info, error)
 - **Module Structure**: Follow conventional mix project structure
-- **Types**: Document function types using @spec when possible
+- **Types**: Prefer not to document function types using @spec
+- **Comments**: Avoid code comments unless absolutely necessary
