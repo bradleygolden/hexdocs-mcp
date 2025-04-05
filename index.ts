@@ -26,10 +26,6 @@ const VectorSearchSchema = z.object({
 });
 
 // Types
-interface PackageRow {
-    package: string;
-}
-
 interface SearchResult {
     id: number;
     package: string;
@@ -99,28 +95,6 @@ const initializeDatabase = async (dbPath: string) => {
     } catch (error) {
         console.error(`Error initializing database: ${error instanceof Error ? error.message : 'Unknown error'}`);
         return false;
-    }
-};
-
-// List packages tool handler
-const listPackagesHandler = async () => {
-    try {
-        // Check if db is initialized
-        if (!db) {
-            throw new Error("Database not initialized");
-        }
-
-        // Get the packages from the database
-        const packages = db.prepare("SELECT DISTINCT package FROM embeddings").all() as PackageRow[];
-
-        // Return an object with the packages array
-        // If there are no packages, return an empty array rather than failing
-        return {
-            packages: packages.map(p => p.package) || []
-        };
-    } catch (error) {
-        console.error(`Error listing packages: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        throw new Error(`Failed to list packages: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 };
 
@@ -222,23 +196,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     const { name, params = {} } = request.params;
 
-    if (name === "list_packages") {
-        try {
-            console.error(`Received list_packages request`);
-            const result = await listPackagesHandler();
-            return {
-                result: result,
-                status: "success"
-            };
-        } catch (error) {
-            console.error(`List packages error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            return {
-                error: `Failed to list packages: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                status: "error"
-            };
-        }
-    }
-    else if (name === "vector_search") {
+    if (name === "vector_search") {
         try {
             // Check if we have arguments or params
             const args = request.params.arguments || params;
@@ -248,14 +206,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             const parsedParams = VectorSearchSchema.parse(args);
             const result = await vectorSearchHandler(parsedParams);
             return {
-                result: result,
-                status: "success"
+                content: [{
+                    type: "text",
+                    text: JSON.stringify(result)
+                }]
             };
         } catch (error) {
             console.error(`Vector search error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             return {
-                error: `Failed to perform search: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                status: "error"
+                content: [{
+                    type: "text",
+                    text: `Failed to perform search: ${error instanceof Error ? error.message : 'Unknown error'}`
+                }],
+                isError: true
             };
         }
     }
@@ -268,22 +231,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
         tools: [
             {
-                name: "list_packages",
-                description:
-                    "List all Hex packages that have documentation available in the database. " +
-                    "This tool provides a comprehensive inventory of packages whose documentation " +
-                    "has been processed and embedded for semantic search. " +
-                    "Use this tool first to discover which packages are available before " +
-                    "performing searches. If a package you need isn't listed, you'll need to " +
-                    "fetch it using the Elixir mix command: `mix hex.docs.mcp fetch PACKAGE`. " +
-                    "Returns an array of package names that can be used with the vector_search tool.",
-                inputSchema: {
-                    type: "object",
-                    properties: {}
-                },
-                parameters: zodToJsonSchema(z.object({}))
-            },
-            {
                 name: "vector_search",
                 description:
                     "Perform semantic search within Elixir Hex package documentation using vector embeddings. " +
@@ -292,9 +239,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     "\n\n" +
                     "Usage guidelines:" +
                     "\n- Use specific, focused queries for best results" +
-                    "\n- The packageName must be a package that exists in the database (use list_packages to check)" +
+                    "\n- The packageName must be a package that exists in the database" +
                     "\n- If results aren't relevant, try rephrasing your query or using more domain-specific terms" +
-                    "\n- For packages not in the database, suggest fetching them with: `mix hex.docs.mcp fetch PACKAGE`" +
+                    "\n- For packages not in the database, fetch them with: `mix hex.docs.mcp fetch PACKAGE [VERSION]`" +
                     "\n\n" +
                     "Results include source file, version, relevance score, and the matching text snippet. " +
                     "This tool helps you quickly find relevant documentation without having to browse " +

@@ -32,24 +32,21 @@ But you can update it to be available in the :dev environment:
 
 The TypeScript MCP server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) and is designed to be used by MCP-compatible clients such as Cursor, Claude Desktop App, Continue, and others. The server provides tools for semantic search of Hex documentation. For a complete list of MCP-compatible clients, see the [MCP Clients documentation](https://modelcontextprotocol.io/clients).
 
-1. Clone the repository
-2. Run `npm run build` in the root directory. This should create a `dist` directory with the MCP server.
-3. Add this to your client's MCP json config:
+Add this to your client's MCP json config:
 
 ```json
 {
   "mcpServers": {
     "hexdocs-mcp": {
-      "command": "node",
+      "command": "npx",
       "args": [
-        "/path/to/hexdocs-mcp/dist/index.js"
+        "-y",
+        "hexdocs-mcp"
       ]
     }
   }
 }
 ```
-
-I'm working a way to make this easier to configure, but for now, you can use the above. ☺️
 
 ### Requirements
 
@@ -209,11 +206,10 @@ When working with Elixir projects that use Hex packages:
 
 ## HexDocs MCP Workflow
 
-1. Use `list_packages` to see what documentation is available
-2. Use `vector_search` to find relevant documentation
-3. For packages not in the database, fetch them with:
+1. Use `vector_search` to find relevant documentation
+2. For packages not in the database, fetch them with:
    - `mix hex.docs.mcp fetch PACKAGE`
-   - For specific versions: `mix hex.docs.mcp fetch PACKAGE VERSION`
+   - For specific versions: `mix hex.docs.mcp fetch PACKAGE [VERSION]`
 
 ## Environment Setup
 
