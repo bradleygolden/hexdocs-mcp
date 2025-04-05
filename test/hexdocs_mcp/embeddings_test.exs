@@ -189,6 +189,100 @@ defmodule HexdocsMcp.EmbeddingsTest do
     end
   end
 
+  describe "embeddings_exist?/2" do
+    test "returns true when embeddings exist for package and version", %{test_package: package} do
+      # Create an embedding first
+      create_test_embedding(package, @default_version)
+
+      # Check if it exists
+      assert Embeddings.embeddings_exist?(package, @default_version) == true
+    end
+
+    test "returns false when no embeddings exist for package", %{test_package: package} do
+      # Ensure no embeddings for this package
+      Repo.delete_all(from e in Embedding, where: e.package == ^package)
+
+      # Check if it exists
+      assert Embeddings.embeddings_exist?(package, @default_version) == false
+    end
+
+    test "returns false when embeddings exist for package but different version", %{
+      test_package: package
+    } do
+      # Create an embedding with a specific version
+      other_version = "1.2.3"
+      create_test_embedding(package, other_version)
+
+      # Check if default version exists (it should not)
+      assert Embeddings.embeddings_exist?(package, @default_version) == false
+    end
+
+    test "handles nil version by using 'latest'", %{test_package: package} do
+      # Create an embedding with the default version
+      create_test_embedding(package, @default_version)
+
+      # Check with nil version (should convert to "latest")
+      assert Embeddings.embeddings_exist?(package, nil) == true
+    end
+  end
+
+  describe "delete_embeddings/2" do
+    test "deletes all embeddings for a package and version", %{test_package: package} do
+      # Create multiple embeddings
+      create_test_embedding(package, @default_version)
+      create_test_embedding(package, @default_version)
+      create_test_embedding(package, "1.2.3")
+
+      # Verify we have the expected counts
+      default_query =
+        from e in Embedding, where: e.package == ^package and e.version == ^@default_version
+
+      other_query = from e in Embedding, where: e.package == ^package and e.version == "1.2.3"
+
+      assert Repo.aggregate(default_query, :count, :id) == 2
+      assert Repo.aggregate(other_query, :count, :id) == 1
+
+      # Delete only the default version embeddings
+      {:ok, count} = Embeddings.delete_embeddings(package, @default_version)
+
+      # Verify the result
+      assert count == 2
+      assert Repo.aggregate(default_query, :count, :id) == 0
+      assert Repo.aggregate(other_query, :count, :id) == 1
+    end
+
+    test "handles nil version by using 'latest'", %{test_package: package} do
+      # Create an embedding with the default version
+      create_test_embedding(package, @default_version)
+
+      # Delete with nil version (should convert to "latest")
+      {:ok, count} = Embeddings.delete_embeddings(package, nil)
+
+      # Verify the result
+      assert count == 1
+
+      default_query =
+        from e in Embedding, where: e.package == ^package and e.version == ^@default_version
+
+      assert Repo.aggregate(default_query, :count, :id) == 0
+    end
+
+    test "returns 0 count when no embeddings match criteria", %{test_package: package} do
+      # Create an embedding with a different version
+      create_test_embedding(package, "1.2.3")
+
+      # Try to delete a non-existent version
+      {:ok, count} = Embeddings.delete_embeddings(package, @default_version)
+
+      # Verify the result
+      assert count == 0
+
+      # Original embedding should still exist
+      other_query = from e in Embedding, where: e.package == ^package and e.version == "1.2.3"
+      assert Repo.aggregate(other_query, :count, :id) == 1
+    end
+  end
+
   describe "search/3" do
     setup :create_embeddings_for_search
 
@@ -306,16 +400,17 @@ defmodule HexdocsMcp.EmbeddingsTest do
 
   defp create_test_embedding(package, version) do
     embedding_vector = List.duplicate(0.1, 384)
+    rand_id = :rand.uniform(10000) 
 
     embedding_data = %{
       package: package,
       version: version,
-      source_file: "test_file.ex",
+      source_file: "test_file_#{rand_id}.ex",
       source_type: "docs",
       start_byte: 100,
       end_byte: 200,
-      text_snippet: "Test snippet...",
-      text: "Test embedding with specific version",
+      text_snippet: "Test snippet #{rand_id}...",
+      text: "Test embedding with specific version #{rand_id}",
       embedding: SqliteVec.Float32.new(embedding_vector)
     }
 
