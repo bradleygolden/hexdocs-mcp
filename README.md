@@ -9,14 +9,6 @@ HexDocs MCP is a project that provides semantic search capabilities for Hex pack
 
 ### Elixir Package
 
-You can install the package as a mix archive if you don't want to add it to your project dependencies:
-
-```bash
-mix archive.install hex hexdocs_mcp
-```
-
-Or, you can add the package to your project dependencies:
-
 ```elixir
 {:hexdocs_mcp, "~> 0.1.1", only: :dev, runtime: false}
 ```
