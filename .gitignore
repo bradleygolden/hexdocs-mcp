@@ -56,3 +56,5 @@ hexdocs_mcp-*.tar
 burrito_out/
 
 .cursor/
+
+bin/
