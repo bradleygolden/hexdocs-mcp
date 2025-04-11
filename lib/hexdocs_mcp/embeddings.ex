@@ -252,6 +252,7 @@ defmodule HexdocsMcp.Embeddings do
             package: e.package,
             version: e.version,
             source_file: e.source_file,
+            text: e.text,
             text_snippet: e.text_snippet,
             score: vec_distance_L2(e.embedding, vec_f32(v))
           },
@@ -280,7 +281,8 @@ defmodule HexdocsMcp.Embeddings do
           package: result.package,
           version: result.version,
           source_file: result.source_file,
-          text_snippet: result.text_snippet
+          text_snippet: result.text_snippet,
+          text: result.text
         }
       }
     end)

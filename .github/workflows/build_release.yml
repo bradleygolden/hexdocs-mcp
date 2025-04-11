@@ -28,6 +28,10 @@ jobs:
           otp-version: '27'
           elixir-version: '1.18'
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Install dependencies
         run: |
           mix local.hex --force
@@ -39,6 +43,43 @@ jobs:
           mix deps.compile
           MIX_ENV=prod mix release
 
+      - name: Generate checksums
+        run: |
+          cd burrito_out
+          node -e '
+            const crypto = require("crypto");
+            const fs = require("fs");
+            const files = ["hexdocs_mcp_windows.exe", "hexdocs_mcp_linux", "hexdocs_mcp_macos", "hexdocs_mcp_macos_arm"];
+            const checksums = files.map(file => {
+              try {
+                const hash = crypto.createHash("sha256");
+                const data = fs.readFileSync(file);
+                hash.update(data);
+                return `${hash.digest("hex")}  ${file}`;
+              } catch (error) {
+                console.error(`Error processing ${file}:`, error);
+                process.exit(1);
+              }
+            });
+            fs.writeFileSync("SHA256SUMS", checksums.join("\n") + "\n");
+          '
+          cd ..
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Export public key and sign checksums
+        run: |
+          cd burrito_out
+          # Export the public key
+          gpg --armor --export ${{ secrets.GPG_KEY_ID }} > SIGNING_KEY.asc
+          # Sign the checksums
+          gpg --detach-sign --armor SHA256SUMS
+          cd ..
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -47,5 +88,8 @@ jobs:
             burrito_out/hexdocs_mcp_linux
             burrito_out/hexdocs_mcp_macos
             burrito_out/hexdocs_mcp_macos_arm
+            burrito_out/SHA256SUMS
+            burrito_out/SHA256SUMS.asc
+            burrito_out/SIGNING_KEY.asc
         if: startsWith(github.ref, 'refs/tags/')
       
