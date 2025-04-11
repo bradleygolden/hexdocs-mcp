@@ -1,0 +1,46 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: '27'
+          elixir-version: '1.18'
+
+      - name: Install dependencies
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
+      - name: Build release with Burrito
+        run: |
+          mix deps.compile
+          MIX_ENV=prod mix release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            burrito_out/hexdocs_mcp_windows.exe
+            burrito_out/hexdocs_mcp_linux
+            burrito_out/hexdocs_mcp_macos
+            burrito_out/hexdocs_mcp_macos_arm
+        if: startsWith(github.ref, 'refs/tags/')
+      

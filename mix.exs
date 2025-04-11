@@ -23,17 +23,28 @@ defmodule HexdocsMcp.MixProject do
       name: "HexDocs MCP",
       source_url: @source_url,
       homepage_url: @source_url,
-      docs: docs()
+      docs: docs(),
+
+      # Release configuration
+      releases: releases()
     ]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
+  defp mod do
+    if Mix.env() == :test do
+      HexdocsMcp.Application
+    else
+      HexdocsMcp.CLI
+    end
+  end
+
   def application do
     [
-      mod: {HexdocsMcp.Application, []},
-      extra_applications: [:logger]
+      mod: {mod(), []},
+      extra_applications: [:logger, :ex_unit]
     ]
   end
 
@@ -53,7 +64,11 @@ defmodule HexdocsMcp.MixProject do
       # Development and documentation dependencies
       {:ex_doc, "~> 0.29", only: :dev, runtime: false},
       {:plug_cowboy, "~> 2.0", only: :test},
-      {:mox, "~> 1.0", only: :test}
+      {:mox, "~> 1.0", only: :test},
+      {:mix_test_watch, "~> 1.2", only: :dev, runtime: false},
+
+      # Burrito for packaging
+      {:burrito, "~> 1.0"}
     ]
   end
 
@@ -85,6 +100,22 @@ defmodule HexdocsMcp.MixProject do
       groups_for_modules: [
         Core: ~r/HexdocsMcp\./,
         "MCP Server": ~r/HexdocsMcp\.Server\./
+      ]
+    ]
+  end
+
+  defp releases do
+    [
+      hexdocs_mcp: [
+        steps: [:assemble, &Burrito.wrap/1],
+        burrito: [
+          targets: [
+            macos: [os: :darwin, cpu: :x86_64],
+            macos_arm: [os: :darwin, cpu: :aarch64],
+            linux: [os: :linux, cpu: :x86_64],
+            windows: [os: :windows, cpu: :x86_64]
+          ]
+        ]
       ]
     ]
   end

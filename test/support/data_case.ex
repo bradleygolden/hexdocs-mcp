@@ -16,11 +16,16 @@ defmodule HexdocsMcp.DataCase do
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
+      import ExUnit.CaptureIO
       import HexdocsMcp.DataCase
+      import HexdocsMcp.Fixtures
     end
   end
 
   setup tags do
+    Mox.stub_with(HexdocsMcp.MockOllama, HexdocsMcp.MockOllamaClient)
+    Mox.stub_with(HexdocsMcp.MockDocs, HexdocsMcp.MockHexdocsCli)
+
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(HexdocsMcp.Repo)
 
     unless tags[:async] do

@@ -52,3 +52,7 @@ hexdocs_mcp-*.tar
 /tmp/
 
 .hexdocs_mcp/
+
+burrito_out/
+
+.cursor/
