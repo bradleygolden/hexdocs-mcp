@@ -9,7 +9,8 @@ defmodule HexdocsMcp.CLI.FetchTest do
   setup :verify_on_exit!
 
   setup do
-    [package: package(), version: "1.0.0"]
+    system_command = HexdocsMcp.Config.system_command()
+    [package: package(), version: "1.0.0", system_command: system_command]
   end
 
   test "fetching with package and version", %{package: package, version: version} do
@@ -85,13 +86,13 @@ defmodule HexdocsMcp.CLI.FetchTest do
     assert_embeddings_generated(package, version)
   end
 
-  test "fetching with help flag" do
+  test "fetching with help flag", %{system_command: system_command} do
     output =
       capture_io(fn ->
         assert :ok = Fetch.main(["--help"])
       end)
 
-    assert output =~ "Usage: hexdocs_mcp fetch PACKAGE [VERSION]"
+    assert output =~ "Usage: #{system_command} fetch PACKAGE [VERSION]"
     assert output =~ "Arguments:"
     assert output =~ "PACKAGE"
     assert output =~ "VERSION"

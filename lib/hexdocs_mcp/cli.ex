@@ -8,7 +8,7 @@ defmodule HexdocsMcp.CLI do
   alias HexdocsMcp.{Repo, Migrations}
 
   @usage """
-  Usage: hexdocs_mcp COMMAND [options]
+  Usage: [SYSTEM_COMMAND] COMMAND [options]
 
   Commands:
     fetch            Download and process docs for a package
@@ -21,7 +21,7 @@ defmodule HexdocsMcp.CLI do
   @impl Application
   def start(_type, _args) do
     {:ok, _} = HexdocsMcp.Application.start(nil, nil)
-    [_ | args] = Burrito.Util.Args.argv()
+    args = Burrito.Util.Args.get_arguments()
     main(args)
     System.halt(0)
     {:ok, self()}
@@ -48,7 +48,11 @@ defmodule HexdocsMcp.CLI do
 
   defp do_main(_args), do: usage()
 
-  defp usage, do: Utils.output_info(@usage)
+  defp usage do
+    @usage
+    |> String.replace("[SYSTEM_COMMAND]", HexdocsMcp.Config.system_command())
+    |> Utils.output_info()
+  end
 
   defp ensure_database_initialized do
     data_path = HexdocsMcp.Config.data_path()

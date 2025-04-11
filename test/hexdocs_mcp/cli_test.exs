@@ -8,16 +8,21 @@ defmodule HexdocsMcp.CLITest do
 
   setup :verify_on_exit!
 
-  test "no arguments shows usage" do
-    assert capture_io(fn ->
-             CLI.main([])
-           end) =~ "Usage: hexdocs_mcp COMMAND [options]"
+  setup do
+    system_command = HexdocsMcp.Config.system_command()
+    [system_command: system_command]
   end
 
-  test "invalid command shows usage" do
+  test "no arguments shows usage", %{system_command: system_command} do
+    assert capture_io(fn ->
+             CLI.main([])
+           end) =~ "Usage: #{system_command} COMMAND [options]"
+  end
+
+  test "invalid command shows usage", %{system_command: system_command} do
     assert capture_io(fn ->
              CLI.main(["invalid"])
-           end) =~ "Usage: hexdocs_mcp COMMAND [options]"
+           end) =~ "Usage: #{system_command} COMMAND [options]"
   end
 
   test "fetch initializes the database" do

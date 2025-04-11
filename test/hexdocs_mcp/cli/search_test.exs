@@ -8,7 +8,8 @@ defmodule HexdocsMcp.CLI.SearchTest do
   setup :verify_on_exit!
 
   setup do
-    [package: package(), version: "1.0.0"]
+    system_command = HexdocsMcp.Config.system_command()
+    [package: package(), version: "1.0.0", system_command: system_command]
   end
 
   test "searching with package and version", %{package: package, version: version} do
@@ -73,7 +74,11 @@ defmodule HexdocsMcp.CLI.SearchTest do
     assert output =~ "Text:"
   end
 
-  test "searching when no embeddings exist", %{package: package, version: version} do
+  test "searching when no embeddings exist", %{
+    package: package,
+    version: version,
+    system_command: system_command
+  } do
     query = "how to configure websockets"
 
     output =
@@ -85,16 +90,16 @@ defmodule HexdocsMcp.CLI.SearchTest do
     # Verify the output contains instructions for generating embeddings
     assert output =~ "No results found"
     assert output =~ "Make sure you've generated embeddings"
-    assert output =~ "hexdocs_mcp fetch #{package} #{version}"
+    assert output =~ "#{system_command} fetch #{package} #{version}"
   end
 
-  test "searching with help flag" do
+  test "searching with help flag", %{system_command: system_command} do
     output =
       capture_io(fn ->
         Search.main(["--help"])
       end)
 
-    assert output =~ "Usage: hexdocs_mcp search PACKAGE [VERSION]"
+    assert output =~ "Usage: #{system_command} search PACKAGE [VERSION]"
     assert output =~ "Arguments:"
     assert output =~ "PACKAGE"
     assert output =~ "VERSION"
