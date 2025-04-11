@@ -2,11 +2,16 @@ ExUnit.start()
 Ecto.Adapters.SQL.Sandbox.mode(HexdocsMcp.Repo, :manual)
 
 # Mock definitions
-Mox.defmock(HexdocsMcp.MockOllama, for: HexdocsMcp.OllamaBehaviour)
-Mox.defmock(HexdocsMcp.MockEmbeddings, for: HexdocsMcp.EmbeddingsBehaviour)
-Mox.defmock(HexdocsMcp.MockCLI, for: HexdocsMcp.CLIBehaviour)
+Mox.defmock(HexdocsMcp.MockOllama, for: HexdocsMcp.Behaviours.Ollama)
+Mox.defmock(HexdocsMcp.MockEmbeddings, for: HexdocsMcp.Behaviours.Embeddings)
+Mox.defmock(HexdocsMcp.MockFetch, for: HexdocsMcp.Behaviours.CLI.Fetch)
+Mox.defmock(HexdocsMcp.MockSearch, for: HexdocsMcp.Behaviours.CLI.Search)
+Mox.defmock(HexdocsMcp.MockDocs, for: HexdocsMcp.Behaviours.Docs)
 
 # Set default mocks for testing
 Application.put_env(:hexdocs_mcp, :ollama_client, HexdocsMcp.MockOllama)
 Application.put_env(:hexdocs_mcp, :embeddings_module, HexdocsMcp.Embeddings)
 Application.put_env(:hexdocs_mcp, :cli_module, HexdocsMcp.CLI)
+Application.put_env(:hexdocs_mcp, :fetch_module, HexdocsMcp.MockFetch)
+Application.put_env(:hexdocs_mcp, :search_module, HexdocsMcp.MockSearch)
+Application.put_env(:hexdocs_mcp, :docs_module, HexdocsMcp.MockDocs)

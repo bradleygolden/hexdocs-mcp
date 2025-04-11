@@ -313,6 +313,14 @@ defmodule HexdocsMcp.Markdown do
 
   defp header_separator({"thead", _, [{"tr", _, cells}]}), do: header_separator({"tr", [], cells})
 
+  defp header_separator({"colgroup", _, cols}) do
+    separator =
+      cols
+      |> Enum.map_join(" | ", fn _ -> "---" end)
+
+    "| " <> separator <> " |"
+  end
+
   defp header_separator({"tr", _, cells}) do
     {_, attrs, _} = List.first(cells)
     colspan = get_colspan(attrs)

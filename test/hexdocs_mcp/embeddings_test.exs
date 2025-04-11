@@ -400,7 +400,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
 
   defp create_test_embedding(package, version) do
     embedding_vector = List.duplicate(0.1, 384)
-    rand_id = :rand.uniform(10000) 
+    rand_id = :rand.uniform(10000)
 
     embedding_data = %{
       package: package,

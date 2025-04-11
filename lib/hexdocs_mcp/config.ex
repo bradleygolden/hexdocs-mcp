@@ -1,15 +1,34 @@
 defmodule HexdocsMcp.Config do
   def data_path do
-    path = System.get_env("HEXDOCS_MCP_PATH") || Path.join(System.user_home(), ".hexdocs_mcp")
-    Application.get_env(:hexdocs_mcp, :data_path, path)
+    Application.fetch_env!(:hexdocs_mcp, :data_path)
   end
 
   def database do
-    Path.join(data_path(), "hexdocs_mcp.db")
+    repo_config = Application.fetch_env!(:hexdocs_mcp, HexdocsMcp.Repo)
+    Keyword.fetch!(repo_config, :database)
   end
 
   def default_embedding_model do
-    model = System.get_env("HEXDOCS_MCP_DEFAULT_EMBEDDING_MODEL") || "nomic-embed-text"
-    Application.get_env(:hexdocs_mcp, :default_embedding_model, model)
+    Application.fetch_env!(:hexdocs_mcp, :default_embedding_model)
+  end
+
+  def embeddings_module do
+    Application.get_env(:hexdocs_mcp, :embeddings_module, HexdocsMcp.Embeddings)
+  end
+
+  def docs_module do
+    Application.get_env(:hexdocs_mcp, :docs_module, HexdocsMcp.Docs)
+  end
+
+  def cli_fetch_module do
+    Application.get_env(:hexdocs_mcp, :fetch_module, HexdocsMcp.CLI.Fetch)
+  end
+
+  def cli_search_module do
+    Application.get_env(:hexdocs_mcp, :search_module, HexdocsMcp.CLI.Search)
+  end
+
+  def ollama_client do
+    Application.get_env(:hexdocs_mcp, :ollama_client, Ollama)
   end
 end
