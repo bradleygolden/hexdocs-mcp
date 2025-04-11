@@ -1,6 +1,7 @@
 [tools]
 elixir = "1.18"
 node = "22"
+zig = "0.14.0"
 
 # high level tasks
 

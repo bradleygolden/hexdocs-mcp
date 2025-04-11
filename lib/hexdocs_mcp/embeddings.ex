@@ -1,19 +1,9 @@
-defmodule HexdocsMcp.EmbeddingsBehaviour do
-  @moduledoc """
-  Behaviour for the Embeddings module - used primarily for mocking in tests
-  """
-  
-  @callback embeddings_exist?(package :: String.t(), version :: String.t() | nil) :: boolean()
-  @callback delete_embeddings(package :: String.t(), version :: String.t() | nil) :: 
-              {:ok, non_neg_integer()}
-end
-
 defmodule HexdocsMcp.Embeddings do
   @moduledoc """
   Functions for generating embeddings from markdown chunks using Ollama.
   """
-  
-  @behaviour HexdocsMcp.EmbeddingsBehaviour
+
+  @behaviour HexdocsMcp.Behaviours.Embeddings
 
   require Logger
   alias Jason
@@ -42,6 +32,7 @@ defmodule HexdocsMcp.Embeddings do
   ## Returns
     * `{:ok, count}` - The number of embeddings generated
   """
+  @impl HexdocsMcp.Behaviours.Embeddings
   def generate(package, version, model, opts \\ []) do
     progress_callback = opts[:progress_callback]
 
@@ -270,6 +261,8 @@ defmodule HexdocsMcp.Embeddings do
     format_results(results)
   end
 
+  defp build_base_query(nil, _), do: from(e in Embedding)
+
   defp build_base_query(package, nil) do
     from e in Embedding, where: e.package == ^package
   end
@@ -304,7 +297,7 @@ defmodule HexdocsMcp.Embeddings do
     * `true` - Embeddings exist
     * `false` - No embeddings exist
   """
-  @impl HexdocsMcp.EmbeddingsBehaviour
+  @impl HexdocsMcp.Behaviours.Embeddings
   def embeddings_exist?(package, version) do
     version = version || "latest"
 
@@ -327,7 +320,7 @@ defmodule HexdocsMcp.Embeddings do
   ## Returns
     * `{:ok, count}` - The number of embeddings deleted
   """
-  @impl HexdocsMcp.EmbeddingsBehaviour
+  @impl HexdocsMcp.Behaviours.Embeddings
   def delete_embeddings(package, version) do
     version = version || "latest"
 
