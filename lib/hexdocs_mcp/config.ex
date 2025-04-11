@@ -31,4 +31,8 @@ defmodule HexdocsMcp.Config do
   def ollama_client do
     Application.get_env(:hexdocs_mcp, :ollama_client, Ollama)
   end
+
+  def system_command do
+    Application.fetch_env!(:hexdocs_mcp, :system_command)
+  end
 end
