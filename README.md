@@ -2,31 +2,10 @@
 
 HexDocs MCP is a project that provides semantic search capabilities for Hex package documentation, designed specifically for AI applications. It consists of two main components:
 
-1. An Elixir package that downloads, processes, and generates embeddings from Hex package documentation
-2. A TypeScript server implementing the Model Context Protocol (MCP) that provides a searchable interface to the embeddings
+1. An Elixir binary that downloads, processes, and generates embeddings from Hex package documentation
+2. A TypeScript server implementing the Model Context Protocol (MCP) that calls the Elixir binary to fetch and search documentation
 
 ## Installation
-
-### Elixir Package
-
-```elixir
-{:hexdocs_mcp, "~> 0.1.2", only: :dev, runtime: false}
-```
-
-And if you use floki or any other dependencies that are marked as only available in
-another environment, update them to be available in the `:dev` environment as well.
-
-For example floki is commonly used in `:test`:
-
-```elixir
-{:floki, ">= 0.30.0", only: :test}
-```
-
-But you can update it to be available in the :dev environment:
-
-```elixir
-{:floki, ">= 0.30.0", only: [:dev, :test]}
-```
 
 ### MCP Client Configuration
 
@@ -48,6 +27,41 @@ Add this to your client's MCP json config:
 }
 ```
 
+This command will automatically download the elixir binaries to both fetch and search documentation. There's no need to install the elixir binaries separately or even have elixir installed!
+
+#### Smithery
+
+Alternatively, you can use [Smithery](https://smithery.ai/server/@bradleygolden/hexdocs-mcp) to automatically add the MCP server to your client config.
+
+For example, for Cursor, you can use the following command:
+
+```bash
+npx -y @smithery/cli@latest install @bradleygolden/hexdocs-mcp --client cursor
+```
+
+### Elixir Package
+
+Alternatively, you can add the hexdocs_mcp package to your project if you don't want to use the MCP server.
+
+```elixir
+{:hexdocs_mcp, "~> 0.1.1", only: :dev, runtime: false}
+```
+
+And if you use floki or any other dependencies that are marked as only available in
+another environment, update them to be available in the `:dev` environment as well.
+
+For example floki is commonly used in `:test`:
+
+```elixir
+{:floki, ">= 0.30.0", only: :test}
+```
+
+But you can update it to be available in the :dev environment:
+
+```elixir
+{:floki, ">= 0.30.0", only: [:dev, :test]}
+```
+
 ### Requirements
 
 - [Ollama](https://ollama.ai) - Required for generating embeddings
@@ -58,7 +72,7 @@ Add this to your client's MCP json config:
 
 ## Configuration
 
-By default, the `mix hex.docs.mcp fetch` command stores all data in `~/.hexdocs_mcp` in the user's home directory. You can change this location by setting the `HEXDOCS_MCP_PATH` environment variable:
+By default, the `fetch` command stores all data in `~/.hexdocs_mcp` in the user's home directory. You can change this location by setting the `HEXDOCS_MCP_PATH` environment variable:
 
 ```bash
 # Example: Set custom storage location
@@ -85,6 +99,12 @@ This is also configurable in the MCP configuration for the server:
 
 ## Usage
 
+### AI Tooling
+
+The MCP server can be used by any MCP-compatible AI tooling. The server will automatically fetch documentation when needed and store it in the configured data directory.
+
+Note that large packages make take time to download and process.
+
 ### Elixir Package
 
 The SQLite database for vector storage and retrieval is created automatically when needed.
@@ -104,18 +124,14 @@ mix hex.docs.mcp fetch phoenix 1.5.9
 Use a specific embedding model when fetching:
 
 ```bash
-mix hex.docs.mcp fetch --model all-minilm phoenix
+mix hex.docs.mcp fetch phoenix --model all-minilm
 ```
 
 Search in the existing embeddings:
 
 ```bash
-mix hex.docs.mcp search --query "channels" phoenix
+mix hex.docs.mcp search phoenix --query "channels"
 ```
-
-### Pro Tip
-
-When you need documentation for a specific package you don't have already, you can have the AI run the `mix hex.docs.mcp fetch` command for you.
 
 ## Acknowledgements
 
@@ -206,16 +222,8 @@ When working with Elixir projects that use Hex packages:
 
 ## HexDocs MCP Workflow
 
-1. Use `vector_search` to find relevant documentation
-2. For packages not in the database, fetch them with:
-   - `mix hex.docs.mcp fetch PACKAGE`
-   - For specific versions: `mix hex.docs.mcp fetch PACKAGE [VERSION]`
-
-## Environment Setup
-
-- Requires Ollama running with nomic-embed-text model pulled
-- Default data location: `~/.hexdocs_mcp` (configurable via HEXDOCS_MCP_PATH)
-- The SQLite database is created automatically when needed
+1. Use `search` to find relevant documentation
+2. Use `fetch` to fetch documentation for a package
 ```
 
 ## Release Guidelines
