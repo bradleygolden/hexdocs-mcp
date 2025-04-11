@@ -340,7 +340,7 @@ async function handleFetch(args: {
 console.error("Initializing MCP server...");
 const server = new McpServer({
     name: "HexdocsMCP",
-    version: "0.1.2",
+    version: "0.2.0-rc.0",
     description: "MCP server for searching Elixir Hex package documentation using embeddings"
 });
 
