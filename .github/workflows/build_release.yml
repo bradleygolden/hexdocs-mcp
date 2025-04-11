@@ -15,10 +15,15 @@ jobs:
     name: Build Release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.14.0
+
+      - run: sudo apt-get -y install xz-utils
+
+      - uses: erlef/setup-beam@v1
         with:
           otp-version: '27'
           elixir-version: '1.18'
