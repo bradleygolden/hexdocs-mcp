@@ -34,7 +34,7 @@ defmodule HexdocsMcp.MixProject do
   defp elixirc_paths(_), do: ["lib"]
 
   defp mod do
-    if Mix.env() == :test do
+    if Mix.env() in [:test, :dev] do
       HexdocsMcp.Application
     else
       HexdocsMcp.CLI

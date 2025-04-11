@@ -7,7 +7,7 @@ defmodule HexdocsMcp.CLI.Fetch do
   alias HexdocsMcp.Markdown
 
   @usage """
-    Usage: hexdocs_mcp fetch PACKAGE [VERSION] [options]
+    Usage: [SYSTEM_COMMAND] fetch PACKAGE [VERSION] [options]
 
     Fetches Hex docs for a package, converts to markdown, creates chunks, and generates embeddings.
 
@@ -28,9 +28,9 @@ defmodule HexdocsMcp.CLI.Fetch do
       5. Generates embeddings
 
     Examples:
-      hexdocs_mcp fetch phoenix              # Process latest version of phoenix
-      hexdocs_mcp fetch phoenix 1.7.0        # Process specific version
-      hexdocs_mcp fetch phoenix --model all-minilm   # Use custom model
+      [SYSTEM_COMMAND] fetch phoenix              # Process latest version of phoenix
+      [SYSTEM_COMMAND] fetch phoenix 1.7.0        # Process specific version
+      [SYSTEM_COMMAND] fetch phoenix --model all-minilm   # Use custom model
   """
 
   defmodule Context do
@@ -46,7 +46,7 @@ defmodule HexdocsMcp.CLI.Fetch do
   def main(args) do
     case parse(args) do
       {:ok, %Context{help?: true}} ->
-        Utils.output_info(@usage)
+        Utils.output_info(usage())
 
       {:ok, context} ->
         process_docs(context)
@@ -54,6 +54,10 @@ defmodule HexdocsMcp.CLI.Fetch do
       {:error, message} ->
         Utils.output_error(message)
     end
+  end
+
+  def usage() do
+    String.replace(@usage, "[SYSTEM_COMMAND]", HexdocsMcp.Config.system_command())
   end
 
   defp process_docs(%Context{force?: false} = context) do
@@ -178,7 +182,7 @@ defmodule HexdocsMcp.CLI.Fetch do
 
   defp find_default_docs_path(package, version, output) do
     Utils.output_info("Could not parse docs path from output: \n#{output}")
-    docs_base = Mix.Project.deps_path() |> Path.join("docs")
+    docs_base = HexdocsMcp.Config.data_path() |> Path.join("docs")
 
     if version do
       Path.join([docs_base, "hexpm", package, version])
@@ -243,7 +247,7 @@ defmodule HexdocsMcp.CLI.Fetch do
   defp write_markdown_content(file, html_files) do
     Enum.each(html_files, fn html_file ->
       html_content = File.read!(html_file)
-      relative_path = Path.relative_to(html_file, Mix.Project.deps_path())
+      relative_path = Path.relative_to(html_file, HexdocsMcp.Config.data_path())
 
       IO.write(file, "---\n\n")
       IO.write(file, "# #{relative_path}\n\n")

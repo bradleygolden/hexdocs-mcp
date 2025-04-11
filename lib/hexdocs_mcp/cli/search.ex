@@ -6,7 +6,7 @@ defmodule HexdocsMcp.CLI.Search do
   alias HexdocsMcp.CLI.{Progress, Utils}
 
   @usage """
-  Usage: hexdocs_mcp search PACKAGE [VERSION] [options]
+  Usage: [SYSTEM_COMMAND] search PACKAGE [VERSION] [options]
 
   Searches in package documentation using semantic embeddings.
 
@@ -25,9 +25,9 @@ defmodule HexdocsMcp.CLI.Search do
     3. Returns the most relevant results
 
   Examples:
-    hexdocs_mcp search phoenix --query "how to create channels" # Search all packages
-    hexdocs_mcp search phoenix 1.7.0 --query "configuration options" # Search specific version
-    hexdocs_mcp search phoenix --query "configuration options" --model all-minilm # Use custom model
+    [SYSTEM_COMMAND] search phoenix --query "how to create channels" # Search all packages
+    [SYSTEM_COMMAND] search phoenix 1.7.0 --query "configuration options" # Search specific version
+    [SYSTEM_COMMAND] search phoenix --query "configuration options" --model all-minilm # Use custom model
   """
 
   defmodule Context do
@@ -42,11 +42,15 @@ defmodule HexdocsMcp.CLI.Search do
   def main(args) do
     case parse(args) do
       {:ok, %Context{help?: true}} ->
-        Utils.output_info(@usage)
+        Utils.output_info(usage())
 
       {:ok, context} ->
         search(context)
     end
+  end
+
+  def usage do
+    String.replace(@usage, "[SYSTEM_COMMAND]", HexdocsMcp.Config.system_command())
   end
 
   defp search(%Context{} = context) do
@@ -93,7 +97,8 @@ defmodule HexdocsMcp.CLI.Search do
   end
 
   defp display_search_results([], package, version) do
-    cmd = "hexdocs_mcp fetch #{package} #{version}"
+    cmd = "[SYSTEM_COMMAND] fetch #{package} #{version}"
+    cmd = String.replace(cmd, "[SYSTEM_COMMAND]", HexdocsMcp.Config.system_command())
 
     Utils.output_info("No results found.")
     Utils.output_info("Make sure you've generated embeddings for this package first by running:")
