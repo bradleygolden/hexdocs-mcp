@@ -135,6 +135,28 @@ defmodule HexdocsMcp.CLI.SearchTest do
     assert output =~ "No results found"
   end
 
+  test "searching with custom limit", %{package: package, version: version} do
+    query = "how to configure channels"
+    limit = 5
+
+    capture_io(fn ->
+      assert :ok = HexdocsMcp.CLI.Fetch.main([package, version])
+    end)
+
+    output =
+      capture_io(fn ->
+        results = Search.main([package, version, "--query", query, "--limit", "#{limit}"])
+        assert_valid_search_results(results, package, version)
+        assert length(results) <= limit
+      end)
+
+    assert output =~ "Searching for \"#{query}\""
+    assert output =~ "Found"
+    assert output =~ "Result (score:"
+    assert output =~ "File:"
+    assert output =~ "Text:"
+  end
+
   # Helper functions
   defp assert_valid_search_results(results, package, version) do
     assert is_list(results)

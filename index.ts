@@ -1,279 +1,374 @@
 #!/usr/bin/env node
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-    CallToolRequestSchema,
-    ListToolsRequestSchema,
-    ToolSchema,
-} from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import * as path from "path";
-import * as os from "os";
 import * as fs from "fs/promises";
-import { existsSync, mkdirSync } from "fs";
-import BetterSqlite3 from "better-sqlite3";
-import { Ollama } from "ollama";
-import * as sqliteVec from "sqlite-vec";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { existsSync } from "fs";
+import { execFile } from "child_process";
+import { promisify } from "util";
+import { fileURLToPath } from "url";
+import { createHash } from 'crypto';
+import { pipeline } from 'stream';
+import { createWriteStream } from 'fs';
 
-// Define parameter schemas using zod
-const VectorSearchSchema = z.object({
-    query: z.string().describe("The search query to find relevant documentation"),
-    packageName: z.string().describe("The Hex package name to search within"),
-    version: z.string().optional().describe("Optional package version, defaults to latest"),
-    limit: z.number().optional().default(5).describe("Maximum number of results to return")
-});
+const execFileAsync = promisify(execFile);
+const pipelineAsync = promisify(pipeline);
 
-// Types
-interface SearchResult {
-    id: number;
-    package: string;
-    version: string;
-    source_file: string;
-    text: string;
-    score: number;
+// Get package version
+async function getPackageVersion(): Promise<string> {
+    const packageJson = JSON.parse(
+        await fs.readFile(
+            new URL('../package.json', import.meta.url),
+            'utf-8'
+        )
+    );
+    return packageJson.version;
 }
 
-// Global vars
-let db: BetterSqlite3.Database;
-let ollama: Ollama;
-
-// Get database path
-const getDbPath = () => {
-    const homedir = os.homedir();
-    const hexdocsPath = process.env.HEXDOCS_MCP_PATH || path.join(homedir, '.hexdocs_mcp');
-    const defaultDbPath = path.join(hexdocsPath, 'hexdocs_mcp.db');
-
-    // Parse command line arguments
-    const args = process.argv.slice(2);
-    const dbPath = args[0] || defaultDbPath;
-
-    return { hexdocsPath, dbPath };
-};
-
-// Initialize database
-const initializeDatabase = async (dbPath: string) => {
+// Get binary metadata
+async function getBinaryMetadata(binaryPath: string): Promise<{ app_version: string } | null> {
     try {
-        // Ensure directory exists
-        const dirPath = path.dirname(dbPath);
-        if (!existsSync(dirPath)) {
-            mkdirSync(dirPath, { recursive: true });
-            console.error(`Created directory for database at: ${dirPath}`);
+        const { stdout } = await execFileAsync(binaryPath, ['maintenance', 'meta']);
+        return JSON.parse(stdout);
+    } catch (error) {
+        console.error(`Warning: Failed to get binary metadata: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return null;
+    }
+}
+
+// Binary management
+const GITHUB_REPO = 'bradleygolden/hexdocs-mcp';
+
+// Platform-specific binary names
+const BINARY_NAMES = {
+    win32: {
+        x64: 'hexdocs_mcp_windows.exe',
+        arm64: 'hexdocs_mcp_windows.exe', // Currently same as x64
+    },
+    darwin: {
+        x64: 'hexdocs_mcp_macos',
+        arm64: 'hexdocs_mcp_macos_arm',
+    },
+    linux: {
+        x64: 'hexdocs_mcp_linux',
+        arm64: 'hexdocs_mcp_linux', // Currently same as x64
+    }
+} as const;
+
+async function getBinaryName(): Promise<string> {
+    const platform = process.platform;
+    const arch = process.arch;
+
+    const platformBinaries = BINARY_NAMES[platform as keyof typeof BINARY_NAMES];
+    if (!platformBinaries) {
+        throw new Error(`Unsupported platform: ${platform}`);
+    }
+
+    const binaryName = platformBinaries[arch as keyof typeof platformBinaries];
+    if (!binaryName) {
+        throw new Error(`Unsupported architecture ${arch} for platform ${platform}`);
+    }
+
+    return binaryName;
+}
+
+async function getBinaryPath(): Promise<string> {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const binaryPath = path.join(__dirname, '..', 'bin', await getBinaryName());
+
+    if (existsSync(binaryPath)) {
+        const metadata = await getBinaryMetadata(binaryPath);
+        const packageVersion = await getPackageVersion();
+
+        if (!metadata || metadata.app_version !== packageVersion) {
+            console.error(`Binary version mismatch (got ${metadata?.app_version}, expected ${packageVersion})`);
+            await downloadBinary(binaryPath);
+        }
+    } else {
+        await downloadBinary(binaryPath);
+    }
+
+    return binaryPath;
+}
+
+// Get release base URL (either GitHub or local test release)
+async function getReleaseBaseUrl(version: string): Promise<string> {
+    if (process.env.NODE_ENV === 'development' && process.env.HEXDOCS_MCP_TEST_RELEASE_PATH) {
+        return `file://${process.env.HEXDOCS_MCP_TEST_RELEASE_PATH}`;
+    }
+    return `https://github.com/${GITHUB_REPO}/releases/download/${version}`;
+}
+
+async function downloadBinary(targetPath: string): Promise<void> {
+    try {
+        // Create bin directory if it doesn't exist
+        await fs.mkdir(path.dirname(targetPath), { recursive: true });
+
+        // Try to use local binary first
+        if (await copyLocalBinary(targetPath)) {
+            return;
         }
 
-        const dbExists = existsSync(dbPath);
-        db = new BetterSqlite3(dbPath);
+        // Fall back to downloading from GitHub or using test release
+        const version = `v${await getPackageVersion()}`;
+        const binaryName = await getBinaryName();
+        const baseUrl = await getReleaseBaseUrl(version);
+        const binDir = path.dirname(targetPath);
 
-        // Initialize the schema if database is new
-        if (!dbExists) {
-            console.error(`Initializing new database at: ${dbPath}`);
-            db.exec(`
-        CREATE TABLE IF NOT EXISTS embeddings(
-          id INTEGER PRIMARY KEY,
-          package TEXT NOT NULL,
-          version TEXT NOT NULL,
-          source_file TEXT NOT NULL,
-          source_type TEXT,
-          start_byte INTEGER,
-          end_byte INTEGER,
-          text_snippet TEXT,
-          text TEXT NOT NULL,
-          embedding BLOB NOT NULL,
-          inserted_at TIMESTAMP,
-          updated_at TIMESTAMP,
-          UNIQUE(package, version, source_file, text_snippet)
-        );
-        CREATE INDEX IF NOT EXISTS idx_embeddings_package_version ON embeddings(package, version);
-      `);
+        // Define paths for verification files
+        const checksumsPath = path.join(binDir, 'SHA256SUMS');
+        const sigPath = path.join(binDir, 'SHA256SUMS.asc');
+        const keyPath = path.join(binDir, 'SIGNING_KEY.asc');
+
+        // Download verification files
+        console.error('Downloading verification files...');
+        await downloadFile(`${baseUrl}/SHA256SUMS`, checksumsPath);
+
+        // Check if we can do GPG verification
+        const gpgAvailable = await isGPGAvailable();
+        if (gpgAvailable) {
+            await downloadFile(`${baseUrl}/SHA256SUMS.asc`, sigPath);
+            await downloadFile(`${baseUrl}/SIGNING_KEY.asc`, keyPath);
+
+            // Verify GPG signature
+            console.error('Verifying GPG signature...');
+            const isSignatureValid = await verifyGPGSignature(checksumsPath, sigPath, keyPath);
+            if (!isSignatureValid) {
+                throw new Error('GPG signature verification failed');
+            }
+            console.error('GPG signature verification passed');
         }
 
-        // Load SQLite vector extension
-        sqliteVec.load(db);
+        // Download binary
+        const downloadUrl = `${baseUrl}/${binaryName}`;
+        console.error(`Downloading binary from ${downloadUrl}`);
+        await downloadFile(downloadUrl, targetPath);
+
+        // Verify checksum
+        console.error('Verifying checksum...');
+        const isChecksumValid = await verifyChecksum(targetPath, checksumsPath);
+        if (!isChecksumValid) {
+            throw new Error('Checksum verification failed');
+        }
+        console.error('Checksum verification passed');
+
+        // Make binary executable
+        await makeExecutable(targetPath);
+
+        // Clean up verification files
+        await fs.rm(checksumsPath, { force: true });
+        if (gpgAvailable) {
+            await fs.rm(sigPath, { force: true });
+            await fs.rm(keyPath, { force: true });
+        }
+
+        console.error(`Successfully downloaded and verified binary version ${version} to ${targetPath}`);
+    } catch (error) {
+        const version = await getPackageVersion();
+        throw new Error(`Failed to download binary version v${version}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
+// Platform-specific executable permissions
+async function makeExecutable(filePath: string): Promise<void> {
+    if (process.platform !== 'win32') {
+        try {
+            await fs.chmod(filePath, 0o755);
+        } catch (error) {
+            console.error('Warning: Failed to set executable permissions:', error instanceof Error ? error.message : 'Unknown error');
+        }
+    }
+}
+
+// Update copyLocalBinary to use platform-safe paths
+async function copyLocalBinary(targetPath: string): Promise<boolean> {
+    try {
+        const __dirname = path.dirname(fileURLToPath(import.meta.url));
+        const binaryName = await getBinaryName();
+        const localBinaryPath = path.join(__dirname, '..', 'burrito_out', binaryName);
+
+        if (existsSync(localBinaryPath)) {
+            console.error(`Found local binary at ${localBinaryPath}`);
+            await fs.copyFile(localBinaryPath, targetPath);
+            await makeExecutable(targetPath);
+            console.error(`Successfully copied local binary to ${targetPath}`);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error(`Warning: Failed to copy local binary: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return false;
+    }
+}
+
+// Update file operations to be platform-safe
+async function downloadFile(url: string, targetPath: string): Promise<void> {
+    if (url.startsWith('file://')) {
+        // For local testing, copy the file instead of downloading
+        const sourcePath = url.replace('file://', '');
+        await fs.copyFile(path.join(sourcePath, path.basename(targetPath)), targetPath);
+        return;
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Failed to download: ${response.statusText} (HTTP ${response.status})`);
+    }
+    const fileStream = createWriteStream(targetPath);
+    await pipelineAsync(response.body as any, fileStream);
+}
+
+// Check if GPG is available
+async function isGPGAvailable(): Promise<boolean> {
+    try {
+        await execFileAsync('gpg', ['--version']);
+        return true;
+    } catch (error) {
+        console.error('GPG is not available on this system. Falling back to checksum verification only.');
+        return false;
+    }
+}
+
+async function verifyGPGSignature(checksumPath: string, signaturePath: string, publicKeyPath: string): Promise<boolean> {
+    try {
+        // Import the public key
+        await execFileAsync('gpg', ['--import', publicKeyPath]);
+
+        // Verify the signature
+        const { stdout, stderr } = await execFileAsync('gpg', [
+            '--verify',
+            signaturePath,
+            checksumPath
+        ]);
+
+        // Log verification details
+        console.error('GPG verification output:', stdout || stderr);
 
         return true;
     } catch (error) {
-        console.error(`Error initializing database: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('GPG verification failed:', error instanceof Error ? error.message : 'Unknown error');
         return false;
     }
-};
+}
 
-// Vector search tool handler
-const vectorSearchHandler = async (params: z.infer<typeof VectorSearchSchema>) => {
+async function verifyChecksum(filePath: string, checksumFile: string): Promise<boolean> {
     try {
-        // Check if db and ollama are initialized
-        if (!db) {
-            throw new Error("Database not initialized");
+        // Read and parse the checksums file
+        const checksums = await fs.readFile(checksumFile, 'utf-8');
+        const binaryName = path.basename(filePath);
+
+        // Find the matching checksum line
+        const checksumLine = checksums
+            .split('\n')
+            .find(line => line.includes(binaryName));
+
+        if (!checksumLine) {
+            throw new Error(`No checksum found for ${binaryName}`);
         }
 
-        if (!ollama) {
-            throw new Error("Ollama client not initialized");
-        }
+        // Extract the expected hash (first part of the line)
+        const expectedHash = checksumLine.split(/\s+/)[0];
 
-        const { query, packageName, version, limit } = params;
+        // Calculate file hash
+        const hash = createHash('sha256');
+        const fileBuffer = await fs.readFile(filePath);
+        hash.update(fileBuffer);
+        const calculatedHash = hash.digest('hex');
 
-        // Get query embedding from Ollama
-        console.error(`Getting embedding for query: "${query}"`);
-        const queryEmbedding = await ollama.embeddings({
-            model: "nomic-embed-text",
-            prompt: query
-        });
-
-        if (!queryEmbedding || !queryEmbedding.embedding) {
-            throw new Error("Failed to generate embedding for query");
-        }
-
-        // Prepare SQL query
-        let sql = `
-      SELECT 
-        e.id,
-        e.package,
-        e.version,
-        e.source_file,
-        e.text,
-        vec_distance_L2(e.embedding, ?) as score
-      FROM embeddings e
-      WHERE e.package = ?
-    `;
-
-        // Convert embedding to binary format for SQLite
-        const embeddingBuffer = Buffer.from(new Float32Array(queryEmbedding.embedding).buffer);
-        const sqlParams: any[] = [embeddingBuffer, packageName];
-
-        if (version && version !== "latest") {
-            sql += " AND e.version = ?";
-            sqlParams.push(version);
-        }
-
-        sql += " ORDER BY score LIMIT ?";
-        sqlParams.push(limit || 5);
-
-        console.error(`Executing query for package: ${packageName}, version: ${version || 'latest'}, limit: ${limit || 5}`);
-
-        // Get all relevant embeddings
-        const rows = db.prepare(sql).all(...sqlParams) as SearchResult[];
-        console.error(`Found ${rows.length} results`);
-
-        // Format results
-        const results = rows.map(row => ({
-            source_file: row.source_file,
-            version: row.version,
-            relevance: (1 - row.score).toFixed(3),
-            text: row.text
-        }));
-
-        return {
-            results: results || [],
-            count: results.length
-        };
+        return calculatedHash.toLowerCase() === expectedHash.toLowerCase();
     } catch (error) {
-        console.error(`Error during vector search: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('Checksum verification error:', error instanceof Error ? error.message : 'Unknown error');
+        return false;
+    }
+}
+
+// Command handlers
+async function handleSearch(args: {
+    query: string;
+    packageName: string;
+    version?: string;
+    limit?: number;
+}) {
+    const binaryPath = await getBinaryPath();
+    const cliArgs = ['search', args.packageName];
+
+    if (args.version) {
+        cliArgs.push(args.version);
+    }
+
+    cliArgs.push('--query', args.query);
+
+    if (args.limit) {
+        cliArgs.push('--limit', args.limit.toString());
+    }
+
+    try {
+        const { stdout } = await execFileAsync(binaryPath, cliArgs);
+        return { content: [{ type: "text" as const, text: stdout }] };
+    } catch (error) {
         throw new Error(`Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-};
+}
+
+async function handleFetch(args: {
+    packageName: string;
+    version?: string;
+    force?: boolean;
+}) {
+    const binaryPath = await getBinaryPath();
+    const cliArgs = ['fetch', args.packageName];
+
+    if (args.version) {
+        cliArgs.push(args.version);
+    }
+
+    if (args.force) {
+        cliArgs.push('--force');
+    }
+
+    try {
+        const { stdout } = await execFileAsync(binaryPath, cliArgs);
+        return { content: [{ type: "text" as const, text: stdout }] };
+    } catch (error) {
+        throw new Error(`Fetch failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
 
 // Create MCP server
 console.error("Initializing MCP server...");
-const server = new Server(
+const server = new McpServer({
+    name: "HexdocsMCP",
+    version: "0.1.2",
+    description: "MCP server for searching Elixir Hex package documentation using embeddings"
+});
+
+// Register tools
+server.tool(
+    "search",
     {
-        name: "HexdocsMCP",
-        version: "0.1.2",
-        description: "MCP server for searching Elixir Hex package documentation using embeddings"
+        query: z.string().describe("The semantic search query to find relevant documentation (can be natural language, not just keywords)"),
+        packageName: z.string().describe("The Hex package name to search within (must be a package that has been fetched)"),
+        version: z.string().optional().describe("Optional specific package version to search within, defaults to latest fetched version"),
+        limit: z.number().optional().default(5).describe("Maximum number of results to return (default: 5, increase for more comprehensive results)")
     },
-    {
-        capabilities: {
-            tools: {}, // Indicates support for tools
-        }
-    }
+    handleSearch
 );
 
+server.tool(
+    "fetch",
+    {
+        packageName: z.string().describe("The Hex package name to fetch (required)"),
+        version: z.string().optional().describe("Optional package version, defaults to latest"),
+        force: z.boolean().optional().default(false).describe("Force re-fetch even if embeddings already exist")
+    },
+    handleFetch
+);
 
-// Set up handler for tool calls
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    if (!request.params) {
-        throw new Error("Parameters are required");
-    }
-
-    const { name, params = {} } = request.params;
-
-    if (name === "vector_search") {
-        try {
-            // Check if we have arguments or params
-            const args = request.params.arguments || params;
-            console.error(`Received vector_search request with args: ${JSON.stringify(args)}`);
-
-            // Parse and validate params
-            const parsedParams = VectorSearchSchema.parse(args);
-            const result = await vectorSearchHandler(parsedParams);
-            return {
-                content: [{
-                    type: "text",
-                    text: JSON.stringify(result)
-                }]
-            };
-        } catch (error) {
-            console.error(`Vector search error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            return {
-                content: [{
-                    type: "text",
-                    text: `Failed to perform search: ${error instanceof Error ? error.message : 'Unknown error'}`
-                }],
-                isError: true
-            };
-        }
-    }
-
-    throw new Error(`Unknown tool: ${name}`);
-});
-
-// Set up handler for listing tools
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-        tools: [
-            {
-                name: "vector_search",
-                description:
-                    "Perform semantic search within Elixir Hex package documentation using vector embeddings. " +
-                    "This tool uses embeddings generated from package documentation to find semantically " +
-                    "relevant content based on your query, not just exact keyword matches. " +
-                    "\n\n" +
-                    "Usage guidelines:" +
-                    "\n- Use specific, focused queries for best results" +
-                    "\n- The packageName must be a package that exists in the database" +
-                    "\n- If results aren't relevant, try rephrasing your query or using more domain-specific terms" +
-                    "\n- For packages not in the database, fetch them with: `mix hex.docs.mcp fetch PACKAGE [VERSION]`" +
-                    "\n\n" +
-                    "Results include source file, version, relevance score, and the matching text snippet. " +
-                    "This tool helps you quickly find relevant documentation without having to browse " +
-                    "through the entire package documentation.",
-                inputSchema: {
-                    type: "object",
-                    properties: {
-                        query: {
-                            type: "string",
-                            description: "The semantic search query to find relevant documentation (can be natural language, not just keywords)"
-                        },
-                        packageName: {
-                            type: "string",
-                            description: "The Hex package name to search within (must be a package that has been fetched)"
-                        },
-                        version: {
-                            type: "string",
-                            description: "Optional specific package version to search within, defaults to latest fetched version"
-                        },
-                        limit: {
-                            type: "number",
-                            description: "Maximum number of results to return (default: 5, increase for more comprehensive results)",
-                            default: 5
-                        }
-                    },
-                    required: ["query", "packageName"]
-                },
-                parameters: zodToJsonSchema(VectorSearchSchema)
-            }
-        ]
-    };
-});
+// Start the server with reconnection handling
+console.error("Starting server...");
+const transport = new StdioServerTransport();
 
 async function connectWithRetry(transport: StdioServerTransport) {
     try {
@@ -281,35 +376,8 @@ async function connectWithRetry(transport: StdioServerTransport) {
         console.error("Connected to transport");
     } catch (error) {
         console.error(`Connection error: ${error instanceof Error ? error.message : 'Unknown error'}, retrying in 5s...`);
-        setTimeout(connectWithRetry, 5000);
+        setTimeout(() => connectWithRetry(transport), 5000);
     }
 }
 
-// Main function
-async function main() {
-    // Get paths
-    const { dbPath } = getDbPath();
-
-    // Initialize DB
-    console.error("Initializing database connection...");
-    const dbInitialized = await initializeDatabase(dbPath);
-    if (!dbInitialized) {
-        process.exit(1);
-    }
-
-    // Initialize Ollama client
-    console.error("Initializing Ollama client...");
-    ollama = new Ollama();
-
-    // Start the server with reconnection handling
-    console.error("Starting server...");
-    const transport = new StdioServerTransport();
-
-    connectWithRetry(transport);
-}
-
-// Run the main function
-main().catch(error => {
-    console.error(`Unhandled error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    process.exit(1);
-});
+connectWithRetry(transport);

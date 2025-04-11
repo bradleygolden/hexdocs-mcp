@@ -17,6 +17,7 @@ defmodule HexdocsMcp.CLI.Search do
   Options:
     --query QUERY    - Search query (required)
     --model MODEL    - Ollama model to use for search (default: nomic-embed-text)
+    --limit LIMIT    - Maximum number of results to return (default: 3)
     --help, -h       - Show this help
 
   Process:
@@ -28,6 +29,7 @@ defmodule HexdocsMcp.CLI.Search do
     [SYSTEM_COMMAND] search phoenix --query "how to create channels" # Search all packages
     [SYSTEM_COMMAND] search phoenix 1.7.0 --query "configuration options" # Search specific version
     [SYSTEM_COMMAND] search phoenix --query "configuration options" --model all-minilm # Use custom model
+    [SYSTEM_COMMAND] search phoenix --query "configuration options" --limit 10 # Return more results
   """
 
   defmodule Context do
@@ -36,6 +38,7 @@ defmodule HexdocsMcp.CLI.Search do
               package: nil,
               version: nil,
               model: nil,
+              limit: 3,
               help?: false
   end
 
@@ -54,12 +57,13 @@ defmodule HexdocsMcp.CLI.Search do
   end
 
   defp search(%Context{} = context) do
-    %Context{query: query, package: package, version: version, model: model} = context
+    %Context{query: query, package: package, version: version, model: model, limit: limit} =
+      context
 
     Utils.output_info("Searching for \"#{query}\" in #{package} #{version || "latest"}...")
 
     progress_callback = create_search_progress_callback()
-    results = perform_search(query, package, version, model, progress_callback)
+    results = perform_search(query, package, version, model, limit, progress_callback)
     display_search_results(results, package, version)
     results
   end
@@ -85,13 +89,13 @@ defmodule HexdocsMcp.CLI.Search do
     end
   end
 
-  defp perform_search(query, package, version, model, progress_callback) do
+  defp perform_search(query, package, version, model, limit, progress_callback) do
     HexdocsMcp.search_embeddings(
       query,
       package,
       version,
       model,
-      top_k: 3,
+      top_k: limit,
       progress_callback: progress_callback
     )
   end
@@ -117,7 +121,7 @@ defmodule HexdocsMcp.CLI.Search do
       )
 
       Utils.output_info("  File: #{metadata.source_file}")
-      Utils.output_info("  Text: #{metadata.text_snippet}")
+      Utils.output_info("  Text: #{metadata.text}")
     end)
   end
 
@@ -127,11 +131,13 @@ defmodule HexdocsMcp.CLI.Search do
         aliases: [
           q: :query,
           m: :model,
+          l: :limit,
           h: :help
         ],
         strict: [
           query: :string,
           model: :string,
+          limit: :integer,
           help: :boolean
         ]
       )
@@ -144,6 +150,7 @@ defmodule HexdocsMcp.CLI.Search do
        package: package,
        version: version,
        model: opts[:model] || HexdocsMcp.Config.default_embedding_model(),
+       limit: opts[:limit] || 3,
        help?: opts[:help] || false
      }}
   end
