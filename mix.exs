@@ -1,7 +1,7 @@
 defmodule HexdocsMcp.MixProject do
   use Mix.Project
 
-  @version "0.2.0-rc.0"
+  @version "0.2.0-rc.1"
   @source_url "https://github.com/bradleygolden/hexdocs-mcp"
   @license "MIT"
 
@@ -44,7 +44,7 @@ defmodule HexdocsMcp.MixProject do
   def application do
     [
       mod: {mod(), []},
-      extra_applications: [:logger, :ex_unit]
+      extra_applications: [:logger]
     ]
   end
 
