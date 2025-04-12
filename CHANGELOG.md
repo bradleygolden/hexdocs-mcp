@@ -8,18 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Migration Guide
 
-### Upgrading to 0.2.0-rc.0
+### Upgrading to 0.2.0
 
-The main change in 0.2.0-rc.0 is that you no longer need to add hexdocs_mcp as a dependency in your project's `mix.exs`. Instead, the functionality is now provided through pre-built binaries that are automatically downloaded when using the MCP server.
+The main change in 0.2.0 is that you no longer need to add hexdocs_mcp as a dependency in your project's `mix.exs`. Instead, the functionality is now provided through pre-built binaries that are automatically downloaded when using the MCP server.
 
 1. Remove the following from your `mix.exs`:
 ```elixir
-{:hexdocs_mcp, "~> 0.1.2", only: :dev, runtime: false}
+{:hexdocs_mcp, "~> 0.1", only: :dev, runtime: false}
 ```
 
 2. If you've updated any dependencies to be available in `:dev` (like `:floki`), you can revert those changes if they're no longer needed for other purposes.
 
-3. Ensure your MCP client configuration is set up correctly (this should already be the case if you were using version 0.1.2):
+3. Ensure your MCP client configuration is set up correctly (this should already be the case if you were using version 0.1.x):
 ```json
 {
   "mcpServers": {
@@ -37,6 +37,11 @@ The main change in 0.2.0-rc.0 is that you no longer need to add hexdocs_mcp as a
 That's it! The MCP server will now automatically handle downloading and using the appropriate binary for your platform.
 
 ## [Unreleased]
+
+## [0.2.0-rc.1]
+
+### Added
+- Download sqlite-vec extension on startup to ensure it's available
 
 ## [0.2.0-rc.0]
 
