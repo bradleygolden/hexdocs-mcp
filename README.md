@@ -20,7 +20,7 @@ Add this to your client's MCP json config:
       "command": "npx",
       "args": [
         "-y",
-        "hexdocs-mcp@0.1.2"
+        "hexdocs-mcp@0.2.0-rc.1"
       ]
     }
   }
