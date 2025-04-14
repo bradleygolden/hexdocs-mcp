@@ -41,6 +41,10 @@ That's it! The MCP server will now automatically handle downloading and using th
 ### Added
 - Added Styler formatter plugin for consistent code style enforcement
 - Added Credo static code analyzer for code quality enforcement
+- Support for `HEXDOCS_MCP_MIX_PROJECT_PATHS` environment variable as an alternative to `--project` flag
+  - Allows setting multiple comma-separated paths to mix.exs files
+  - First valid path is used when fetching package documentation
+  - Simplifies workflow by not having to specify project path for every command
 
 ### Changed
 - Updated code to comply with Credo rules

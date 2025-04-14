@@ -100,6 +100,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
     assert output =~ "Options:"
     assert output =~ "--model"
     assert output =~ "--force"
+    assert output =~ "--project"
     assert output =~ "Examples:"
   end
 
@@ -112,12 +113,12 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
     capture_io(:stderr, fn ->
       assert {:error, message} = Fetch.main([])
-      assert message =~ "Invalid arguments: missing package name"
+      assert message =~ "Invalid arguments: must specify either PACKAGE or --project PATH"
     end)
 
     capture_io(:stderr, fn ->
       assert {:error, message} = Fetch.main(["--model", "test"])
-      assert message =~ "Invalid arguments: missing package name"
+      assert message =~ "Invalid arguments: must specify either PACKAGE or --project PATH"
     end)
 
     capture_io(fn ->

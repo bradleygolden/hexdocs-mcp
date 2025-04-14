@@ -4,6 +4,7 @@ defmodule HexdocsMcp.CLI do
   """
   use Application
 
+  alias Burrito.Util.Args
   alias HexdocsMcp.CLI.Utils
   alias HexdocsMcp.Migrations
   alias HexdocsMcp.Repo
@@ -12,17 +13,18 @@ defmodule HexdocsMcp.CLI do
   Usage: [SYSTEM_COMMAND] COMMAND [options]
 
   Commands:
-    fetch            Download and process docs for a package
-    search           Search in package docs using embeddings
+    fetch              Download and process docs for a package or project dependencies
+                       Use --project PATH to fetch all dependencies from a mix.exs file
+    search             Search in package docs using embeddings
 
   Options:
-    --help, -h       Show this help
+    --help, -h         Show this help
   """
 
   @impl Application
   def start(_type, _args) do
     {:ok, _} = HexdocsMcp.Application.start(nil, nil)
-    args = Burrito.Util.Args.get_arguments()
+    args = Args.get_arguments()
     main(args)
     System.halt(0)
     {:ok, self()}

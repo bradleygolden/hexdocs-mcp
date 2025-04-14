@@ -13,13 +13,20 @@ defmodule HexdocsMcp.CLI.Fetch do
     Fetches Hex docs for a package, converts to markdown, creates chunks, and generates embeddings.
 
     Arguments:
-      PACKAGE    - Hex package name to fetch (required)
+      PACKAGE    - Hex package name to fetch (required unless --project is used alone)
       VERSION    - Package version (optional, defaults to latest)
 
     Options:
       --model MODEL    - Ollama model to use for embeddings (default: nomic-embed-text)
       --force          - Force re-fetch even if embeddings already exist
+      --project PATH   - Path to mix.exs file to fetch all dependencies from
+                         When used with PACKAGE but no VERSION, uses the version from mix.exs
       --help, -h       - Show this help
+
+    Environment Variables:
+      HEXDOCS_MCP_MIX_PROJECT_PATHS - Comma-separated list of mix.exs file paths (alternative to --project)
+                                      Example: export HEXDOCS_MCP_MIX_PROJECT_PATHS="/path/to/project1/mix.exs,/path/to/project2/mix.exs"
+                                      When specified with a package name, the first valid path is used
 
     Process:
       1. Checks if embeddings exist (skips remaining steps unless --force is used)
@@ -29,16 +36,23 @@ defmodule HexdocsMcp.CLI.Fetch do
       5. Generates embeddings
 
     Examples:
-      [SYSTEM_COMMAND] fetch phoenix              # Process latest version of phoenix
-      [SYSTEM_COMMAND] fetch phoenix 1.7.0        # Process specific version
-      [SYSTEM_COMMAND] fetch phoenix --model all-minilm   # Use custom model
+      [SYSTEM_COMMAND] fetch phoenix                    # Process latest version of phoenix
+      [SYSTEM_COMMAND] fetch phoenix 1.7.0              # Process specific version
+      [SYSTEM_COMMAND] fetch phoenix --model all-minilm # Use custom model
+      [SYSTEM_COMMAND] fetch --project mix.exs          # Process all dependencies in mix.exs
+      [SYSTEM_COMMAND] fetch --project mix.exs --force  # Force reprocess all dependencies
+      [SYSTEM_COMMAND] fetch phoenix --project mix.exs  # Use version of phoenix from mix.exs
+      # With MIX_PROJECT_PATHS set in environment:
+      [SYSTEM_COMMAND] fetch phoenix                    # Use version from first valid project path
+      [SYSTEM_COMMAND] fetch phoenix 1.7.0              # Ignore project paths, use specified version
   """
 
   defmodule Context do
     @moduledoc false
-    @enforce_keys [:package, :version, :model, :force?, :help?, :embeddings_module]
+    @enforce_keys [:model, :force?, :help?, :embeddings_module]
     defstruct package: nil,
               version: nil,
+              project_path: nil,
               model: nil,
               force?: false,
               help?: false,
@@ -50,11 +64,137 @@ defmodule HexdocsMcp.CLI.Fetch do
       {:ok, %Context{help?: true}} ->
         Utils.output_info(usage())
 
+      {:ok, %Context{package: package, project_path: project_path} = context}
+      when not is_nil(package) and not is_nil(project_path) ->
+        process_package_from_project(context)
+
+      {:ok, %Context{project_path: project_path} = context} when not is_nil(project_path) ->
+        process_project_deps(context)
+
       {:ok, context} ->
         process_docs(context)
 
       {:error, message} ->
         Utils.output_error(message)
+    end
+  end
+
+  defp process_package_from_project(%Context{package: package, project_path: path, version: explicit_version} = context) do
+    Utils.output_info("Reading dependencies from #{path} to find version for #{package}...")
+
+    try do
+      deps = HexdocsMcp.Config.mix_deps_module().read_deps(path)
+
+      case find_package_in_deps(package, deps) do
+        {_, dep_version} when is_nil(explicit_version) ->
+          normalized_version = normalize_version_constraint(dep_version)
+
+          Utils.output_info("Found #{package} with version #{dep_version || "latest"} in project dependencies")
+
+          updated_context = %Context{
+            package: package,
+            version: normalized_version,
+            model: context.model,
+            force?: context.force?,
+            help?: false,
+            embeddings_module: context.embeddings_module
+          }
+
+          process_docs(updated_context)
+
+        {_, _} when not is_nil(explicit_version) ->
+          Utils.output_info("Using explicitly provided version #{explicit_version} for #{package}")
+
+          updated_context = %Context{
+            package: package,
+            version: explicit_version,
+            model: context.model,
+            force?: context.force?,
+            help?: false,
+            embeddings_module: context.embeddings_module
+          }
+
+          process_docs(updated_context)
+
+        nil ->
+          Utils.output_info("Package #{package} not found in project dependencies.")
+
+          Utils.output_info(
+            "Using #{if explicit_version, do: "specified version #{explicit_version}", else: "latest version"}."
+          )
+
+          updated_context = %Context{
+            package: package,
+            version: explicit_version || "latest",
+            model: context.model,
+            force?: context.force?,
+            help?: false,
+            embeddings_module: context.embeddings_module
+          }
+
+          process_docs(updated_context)
+      end
+    rescue
+      e in RuntimeError -> Utils.output_error(e.message)
+    end
+  end
+
+  defp find_package_in_deps(package, deps) do
+    Enum.find(deps, fn {dep_name, _version} ->
+      dep_name == package
+    end) ||
+      Enum.find(deps, fn {dep_name, _version} ->
+        to_string(dep_name) == package
+      end)
+  end
+
+  defp process_project_deps(%Context{project_path: path} = context) do
+    Utils.output_info("Reading dependencies from #{path}...")
+
+    try do
+      deps = HexdocsMcp.Config.mix_deps_module().read_deps(path)
+
+      if Enum.empty?(deps) do
+        Utils.output_info("No Hex dependencies found in mix.exs")
+        :ok
+      else
+        Utils.output_info("Found #{length(deps)} Hex dependencies")
+
+        {next_stage, complete} = Progress.workflow(["Fetching docs for dependencies"])
+        next_stage.("Fetching docs for dependencies")
+
+        Enum.map(deps, fn {package, version} ->
+          Utils.output_info("\nProcessing #{package}#{if version, do: " #{version}", else: ""}")
+
+          normalized_version = normalize_version_constraint(version)
+
+          package_context = %Context{
+            package: package,
+            version: normalized_version,
+            model: context.model,
+            force?: context.force?,
+            help?: false,
+            embeddings_module: context.embeddings_module
+          }
+
+          process_docs(package_context)
+        end)
+
+        complete.()
+        :ok
+      end
+    rescue
+      e in RuntimeError -> Utils.output_error(e.message)
+    end
+  end
+
+  defp normalize_version_constraint(nil), do: nil
+
+  defp normalize_version_constraint(version) do
+    if String.match?(version, ~r/^[~><=]/) do
+      nil
+    else
+      version
     end
   end
 
@@ -125,6 +265,11 @@ defmodule HexdocsMcp.CLI.Fetch do
     Utils.output_info("  • Markdown file: #{output_file}")
     Utils.output_info("  • Created #{chunk_count} chunks in: #{chunks_dir}")
     Utils.output_info("  • Generated #{embed_count} embeddings")
+
+    Process.delete(:processing_progress_fn)
+    Process.delete(:saving_progress_fn)
+    Process.delete(:progress_processing_total)
+    Process.delete(:progress_saving_total)
 
     :ok
   end
@@ -347,6 +492,9 @@ defmodule HexdocsMcp.CLI.Fetch do
   end
 
   defp create_embedding_progress_callback do
+    Process.put(:progress_processing_total, Process.get(:progress_processing_total, 0))
+    Process.put(:progress_saving_total, Process.get(:progress_saving_total, 0))
+
     fn current, total, step ->
       step = step || :processing
       progress_fn = get_progress_fn_for_step(step, total)
@@ -399,30 +547,87 @@ defmodule HexdocsMcp.CLI.Fetch do
         aliases: [
           m: :model,
           f: :force,
-          h: :help
+          h: :help,
+          p: :project
         ],
         strict: [
           model: :string,
           force: :boolean,
-          help: :boolean
+          help: :boolean,
+          project: :string
         ]
       )
 
     {package, version} = Utils.parse_package_args(args)
     help? = opts[:help] || false
 
-    if not help? and !package do
-      {:error, "Invalid arguments: missing package name"}
-    else
-      {:ok,
-       %Context{
-         package: package,
-         version: version || "latest",
-         model: opts[:model] || HexdocsMcp.Config.default_embedding_model(),
-         force?: opts[:force] || false,
-         help?: help?,
-         embeddings_module: HexdocsMcp.Config.embeddings_module()
-       }}
+    project_path = get_project_path(opts[:project], package)
+
+    model = opts[:model] || HexdocsMcp.Config.default_embedding_model()
+    force? = opts[:force] || false
+
+    cond do
+      help? ->
+        {:ok,
+         %Context{
+           model: model,
+           force?: force?,
+           help?: true,
+           embeddings_module: HexdocsMcp.Config.embeddings_module()
+         }}
+
+      package != nil and project_path != nil ->
+        {:ok,
+         %Context{
+           package: package,
+           version: version,
+           project_path: project_path,
+           model: model,
+           force?: force?,
+           help?: false,
+           embeddings_module: HexdocsMcp.Config.embeddings_module()
+         }}
+
+      project_path != nil ->
+        {:ok,
+         %Context{
+           project_path: project_path,
+           model: model,
+           force?: force?,
+           help?: false,
+           embeddings_module: HexdocsMcp.Config.embeddings_module()
+         }}
+
+      package != nil ->
+        {:ok,
+         %Context{
+           package: package,
+           version: version || "latest",
+           model: model,
+           force?: force?,
+           help?: false,
+           embeddings_module: HexdocsMcp.Config.embeddings_module()
+         }}
+
+      true ->
+        {:error, "Invalid arguments: must specify either PACKAGE or --project PATH"}
     end
   end
+
+  defp get_project_path(explicit_path, _package) when not is_nil(explicit_path), do: explicit_path
+
+  defp get_project_path(nil, package) when not is_nil(package) do
+    paths = HexdocsMcp.Config.project_paths()
+
+    case paths do
+      [first_path | _] when is_binary(first_path) ->
+        Utils.output_info("Using project path from HEXDOCS_MCP_MIX_PROJECT_PATHS: #{first_path}")
+        first_path
+
+      _ ->
+        nil
+    end
+  end
+
+  defp get_project_path(nil, nil), do: nil
 end

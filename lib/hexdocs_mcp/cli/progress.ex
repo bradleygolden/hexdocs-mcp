@@ -11,7 +11,6 @@ defmodule HexdocsMcp.CLI.Progress do
       reset: 0,
       bright: 0,
       cyan: 0,
-      # Added red for errors
       red: 0
     ]
 
@@ -92,18 +91,39 @@ defmodule HexdocsMcp.CLI.Progress do
     # Characters for the bar itself
     bar_length = 20
 
+    # Store the message and total for this progress bar so we can track across multiple calls
+    Process.put(:current_progress_message, message)
+    Process.put(:current_progress_total, total)
+
     # Simple progress bar that avoids flashing by limiting updates
     fn count ->
       now = System.monotonic_time(:millisecond)
       last_update = Process.get(:last_progress_update, 0)
 
-      # Calculate percentage
-      percentage = trunc(count / total * 100)
-      last_percentage = Process.get(:last_progress_percentage, -1)
+      # Get the stored total - this handles the case where different batches
+      # are processed as separate tasks but are part of the same operation
+      current_message = Process.get(:current_progress_message)
+
+      if current_message != message do
+        # If message changed, this is a new progress bar, reset state
+        Process.put(:last_progress_percentage, -1)
+        Process.put(:last_displayed_count, 0)
+        Process.put(:current_progress_message, message)
+        Process.put(:current_progress_total, total)
+      end
+
+      # Use the stored total so that if we're called multiple times for batches
+      # we maintain the same total
+      stored_total = Process.get(:current_progress_total, total)
+      safe_total = max(1, stored_total)
 
       # Ensure count never decreases - this prevents "jumping backward"
       last_displayed_count = Process.get(:last_displayed_count, 0)
-      display_count = max(count, last_displayed_count)
+      display_count = max(0, min(safe_total, max(count, last_displayed_count)))
+
+      # Calculate percentage (clamped between a 0-100)
+      percentage = min(100, max(0, trunc(display_count / safe_total * 100)))
+      last_percentage = Process.get(:last_progress_percentage, -1)
 
       # Only update if:
       # 1. It's been at least 250ms since last update, and count increased, or
@@ -114,16 +134,19 @@ defmodule HexdocsMcp.CLI.Progress do
       # Update only on larger percentage jumps
       percentage_change_threshold = 5
 
-      if count >= total ||
+      if count >= total || percentage >= 100 ||
            (now - last_update >= update_interval_ms && count > last_displayed_count) ||
            abs(percentage - last_percentage) >= percentage_change_threshold do
-        # Calculate the number of bar segments to fill
-        filled_length = trunc(bar_length * display_count / total)
+        # Calculate the number of bar segments to fill, ensuring values are in range
+        filled_length = max(0, min(bar_length, trunc(bar_length * display_count / total)))
+
+        # Ensure we never have negative unfilled length
+        unfilled_length = max(0, bar_length - filled_length)
 
         # Create the bar
         bar =
           String.duplicate("█", filled_length) <>
-            String.duplicate("░", bar_length - filled_length)
+            String.duplicate("░", unfilled_length)
 
         # Format the message and numbers with colors
         percent_str = String.pad_leading("#{percentage}%", 4)
@@ -164,16 +187,16 @@ defmodule HexdocsMcp.CLI.Progress do
   ## Example
 
       {next_stage, complete} = HexdocsMcp.CLI.Progress.workflow(["Fetching", "Converting", "Processing"])
-      
+
       next_stage.("Fetching")
       # do fetching work...
-      
+
       next_stage.("Converting")
       # do conversion work...
-      
+
       next_stage.("Processing")
       # do processing work...
-      
+
       complete.()
   """
   def workflow(stages) do
