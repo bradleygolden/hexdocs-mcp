@@ -6,7 +6,7 @@ import { z } from "zod";
 import * as path from "path";
 import * as fs from "fs/promises";
 import { existsSync } from "fs";
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import { createHash } from 'crypto';
@@ -313,12 +313,43 @@ async function handleSearch(args: {
 }
 
 async function handleFetch(args: {
-    packageName: string;
+    packageName?: string;
     version?: string;
     force?: boolean;
+    project?: string;
 }) {
+    // Check for environment variable first
+    const projectPaths = process.env.HEXDOCS_MCP_MIX_PROJECT_PATHS?.split(',').filter(Boolean);
+
+    // If no args provided but we have project paths, fetch all of them
+    if (!args.packageName && !args.project && projectPaths?.length) {
+        console.error(`Found ${projectPaths.length} project paths in HEXDOCS_MCP_MIX_PROJECT_PATHS`);
+        const results: string[] = [];
+
+        for (const projectPath of projectPaths) {
+            try {
+                const { stdout } = await execFileAsync(await getBinaryPath(), ['fetch', '--project', projectPath.trim()]);
+                results.push(stdout);
+            } catch (error) {
+                console.error(`Warning: Failed to fetch for project ${projectPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
+        }
+
+        return { content: [{ type: "text" as const, text: results.join('\n') }] };
+    }
+
+    // Validate that at least packageName or project is provided if no env var paths
+    if (!args.packageName && !args.project) {
+        throw new Error('Fetch failed: Must specify either packageName or project');
+    }
+
     const binaryPath = await getBinaryPath();
-    const cliArgs = ['fetch', args.packageName];
+    const cliArgs = ['fetch'];
+
+    // Add package name only if provided (might be omitted when using project flag alone)
+    if (args.packageName) {
+        cliArgs.push(args.packageName);
+    }
 
     if (args.version) {
         cliArgs.push(args.version);
@@ -326,6 +357,10 @@ async function handleFetch(args: {
 
     if (args.force) {
         cliArgs.push('--force');
+    }
+
+    if (args.project) {
+        cliArgs.push('--project', args.project);
     }
 
     try {
@@ -349,6 +384,83 @@ async function main() {
     }
 
     console.error("Initializing MCP server...");
+
+    // Get environment variables
+    const envVars = Object.fromEntries(
+        Object.entries(process.env)
+            .filter(([key]) => key.startsWith('HEXDOCS_MCP_'))
+    );
+
+    // Only start daemon if watch is enabled
+    const watchEnabled = envVars.HEXDOCS_MCP_WATCH_ENABLED === 'true' || envVars.HEXDOCS_MCP_WATCH_ENABLED === '1';
+
+    if (watchEnabled) {
+        // Start the Elixir application in daemon mode
+        const binaryPath = await getBinaryPath();
+        try {
+            // Start the application as a background process
+            const daemonProcess = spawn(binaryPath, ['daemon'], {
+                stdio: ['ignore', 'pipe', 'pipe'], // Ignore stdin, pipe stdout/stderr
+                detached: true,
+                windowsHide: true,
+                env: {
+                    ...envVars,
+                    HEXDOCS_MCP_WATCH_ENABLED: 'true',
+                    HEXDOCS_MCP_POLL_INTERVAL: '60000',  // 60 seconds in milliseconds
+                    // For runtime.exs configuration
+                    HEXDOCS_MCP_PATH: process.env.HOME ? path.join(process.env.HOME, '.hexdocs_mcp') : path.join(process.cwd(), '.hexdocs_mcp'),
+                    // For burrito installation
+                    HEXDOCS_MCP_INSTALL_DIR: process.env.HOME ? path.join(process.env.HOME, '.hexdocs_mcp') : path.join(process.cwd(), '.hexdocs_mcp')
+                }
+            });
+
+            // Capture output for logging only
+            daemonProcess.stdout?.on('data', (data) => {
+                console.error('Daemon stdout:', data.toString());
+            });
+
+            daemonProcess.stderr?.on('data', (data) => {
+                console.error('Daemon stderr:', data.toString());
+            });
+
+            // Handle process events
+            daemonProcess.on('error', (err) => {
+                console.error('Daemon process error:', err);
+            });
+
+            daemonProcess.on('exit', (code, signal) => {
+                if (code !== null) {
+                    console.error(`Daemon process exited with code ${code}`);
+                } else if (signal !== null) {
+                    console.error(`Daemon process was killed with signal ${signal}`);
+                }
+            });
+
+            // Unref the process so it can run independently of the parent
+            daemonProcess.unref();
+
+            console.error("Started Elixir application in daemon mode");
+
+            // Add any projects from HEXDOCS_MCP_MIX_PROJECT_PATHS
+            const projectPaths = envVars.HEXDOCS_MCP_MIX_PROJECT_PATHS?.split(',').filter(Boolean) || [];
+            for (const path of projectPaths) {
+                const trimmedPath = path.trim();
+                if (trimmedPath) {
+                    try {
+                        const { stdout } = await execFileAsync(binaryPath, ['watch', 'add', trimmedPath]);
+                        console.error(`Added project to watch: ${trimmedPath}`, stdout);
+                    } catch (error) {
+                        console.error(`Warning: Failed to add project ${trimmedPath}:`, error instanceof Error ? error.message : 'Unknown error');
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Warning: Failed to start Elixir application:", error instanceof Error ? error.message : 'Unknown error');
+        }
+    } else {
+        console.error("Watch functionality is disabled. Skipping daemon startup.");
+    }
+
     const server = new McpServer({
         name: "HexdocsMCP",
         version: "0.2.0",
@@ -358,6 +470,7 @@ async function main() {
     // Register tools
     server.tool(
         "search",
+        "Search for documentation in a package using semantic search",
         {
             query: z.string().describe("The semantic search query to find relevant documentation (can be natural language, not just keywords)"),
             packageName: z.string().describe("The Hex package name to search within (must be a package that has been fetched)"),
@@ -369,10 +482,12 @@ async function main() {
 
     server.tool(
         "fetch",
+        "Fetches and processes Hex package documentation, creating embeddings for semantic search. Note that fetching can take a significant amount of time, especially when processing all dependencies from a project. You can also set HEXDOCS_MCP_MIX_PROJECT_PATHS environment variable with comma-separated mix.exs paths to automatically fetch docs for multiple projects.",
         {
-            packageName: z.string().describe("The Hex package name to fetch (required)"),
+            packageName: z.string().optional().describe("The Hex package name to fetch (required unless --project is used alone or HEXDOCS_MCP_MIX_PROJECT_PATHS is set)"),
             version: z.string().optional().describe("Optional package version, defaults to latest"),
-            force: z.boolean().optional().default(false).describe("Force re-fetch even if embeddings already exist")
+            force: z.boolean().optional().default(false).describe("Force re-fetch even if embeddings already exist"),
+            project: z.string().optional().describe("Full absolute path to mix.exs file to fetch all dependencies from (e.g., /Users/username/project/mix.exs)")
         },
         handleFetch
     );

@@ -29,6 +29,10 @@ defmodule HexdocsMcp.Config do
     Application.get_env(:hexdocs_mcp, :search_module, HexdocsMcp.CLI.Search)
   end
 
+  def cli_watch_module do
+    Application.get_env(:hexdocs_mcp, :watch_module, HexdocsMcp.CLI.Watch)
+  end
+
   def ollama_client do
     Application.get_env(:hexdocs_mcp, :ollama_client, Ollama)
   end
@@ -50,6 +54,28 @@ defmodule HexdocsMcp.Config do
     |> String.split(",", trim: true)
     |> Enum.map(&String.trim/1)
     |> Enum.filter(&File.exists?/1)
+  end
+
+  def watch_enabled? do
+    Application.get_env(:hexdocs_mcp, :watch_enabled, false) ||
+      System.get_env("HEXDOCS_MCP_WATCH_ENABLED") in ["true", "1"]
+  end
+
+  def watch_poll_interval do
+    case System.get_env("HEXDOCS_MCP_WATCH_INTERVAL") do
+      nil ->
+        Application.get_env(:hexdocs_mcp, :watch_poll_interval, 60_000)
+
+      value ->
+        case Integer.parse(value) do
+          {interval, _} when interval > 0 -> interval
+          _ -> 60_000
+        end
+    end
+  end
+
+  def mix_lock_watcher_module do
+    Application.get_env(:hexdocs_mcp, :mix_lock_watcher_module, HexdocsMcp.MixLockWatcher)
   end
 
   def system_command do

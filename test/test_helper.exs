@@ -8,6 +8,8 @@ Mox.defmock(HexdocsMcp.MockFetch, for: HexdocsMcp.Behaviours.CLI.Fetch)
 Mox.defmock(HexdocsMcp.MockSearch, for: HexdocsMcp.Behaviours.CLI.Search)
 Mox.defmock(HexdocsMcp.MockDocs, for: HexdocsMcp.Behaviours.Docs)
 Mox.defmock(HexdocsMcp.MockMixDeps, for: HexdocsMcp.Behaviours.MixDeps)
+Mox.defmock(HexdocsMcp.MockMixLockWatcher, for: HexdocsMcp.Behaviours.MixLockWatcher)
+Mox.defmock(HexdocsMcp.MockWatch, for: HexdocsMcp.Behaviours.CLI.Watch)
 
 # Set default mocks for testing
 Application.put_env(:hexdocs_mcp, :ollama_client, HexdocsMcp.MockOllama)

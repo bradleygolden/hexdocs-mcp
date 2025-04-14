@@ -1,9 +1,19 @@
+defmodule HexdocsMcp.Behaviours.CLI do
+  @moduledoc false
+  @callback main(list) :: :ok | :error
+end
+
 defmodule HexdocsMcp.Behaviours.CLI.Fetch do
   @moduledoc false
   @callback main(list) :: :ok | :error
 end
 
 defmodule HexdocsMcp.Behaviours.CLI.Search do
+  @moduledoc false
+  @callback main(list) :: :ok | :error
+end
+
+defmodule HexdocsMcp.Behaviours.CLI.Watch do
   @moduledoc false
   @callback main(list) :: :ok | :error
 end
@@ -40,4 +50,9 @@ end
 defmodule HexdocsMcp.Behaviours.MixDeps do
   @moduledoc false
   @callback read_deps(String.t()) :: [{String.t(), String.t() | nil}]
+end
+
+defmodule HexdocsMcp.Behaviours.MixLockWatcher do
+  @moduledoc false
+  @callback process_changed_project(path :: String.t()) :: :ok
 end

@@ -9,6 +9,13 @@ HexDocs MCP is a project that provides semantic search capabilities for Hex pack
 > **This documentation reflects the current development state on the main branch.**
 > For documentation on the latest stable release, please see the [latest release page](https://github.com/bradleygolden/hexdocs-mcp/releases/latest) and the [latest release branch](https://github.com/bradleygolden/hexdocs-mcp/tree/v0.2.0).
 
+## Features
+
+- Fetch and embed documentation for any Hex package
+- Semantic search across embedded documentation
+- Automatically fetch dependencies from a project's mix.exs file
+- Watch mix.lock files for changes and automatically update documentation
+
 ## Installation
 
 ### MCP Client Configuration
@@ -85,6 +92,8 @@ The following environment variables can be used to configure the tool:
 | `HEXDOCS_MCP_PATH` | Path where data will be stored | `~/.hexdocs_mcp` |
 | `HEXDOCS_MCP_DEFAULT_EMBEDDING_MODEL` | Default model to use for embeddings | `nomic-embed-text` |
 | `HEXDOCS_MCP_MIX_PROJECT_PATHS` | Comma-separated list of paths to mix.exs files | (none) |
+| `HEXDOCS_MCP_WATCH_ENABLED` | Enable automatic watching of mix.lock files | `false` |
+| `HEXDOCS_MCP_WATCH_INTERVAL` | Polling interval in milliseconds | `60000` |
 
 #### Examples:
 
@@ -97,6 +106,12 @@ export HEXDOCS_MCP_DEFAULT_EMBEDDING_MODEL=all-minilm
 
 # Configure common project paths to avoid specifying --project flag each time
 export HEXDOCS_MCP_MIX_PROJECT_PATHS="/path/to/project1/mix.exs,/path/to/project2/mix.exs"
+
+# Enable automatic watching of mix.lock files
+export HEXDOCS_MCP_WATCH_ENABLED=true
+
+# Set polling interval to 30 seconds
+export HEXDOCS_MCP_WATCH_INTERVAL=30000
 ```
 
 ### MCP Server Configuration

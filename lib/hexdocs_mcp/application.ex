@@ -10,6 +10,18 @@ defmodule HexdocsMcp.Application do
       {HexdocsMcp.Repo, load_extensions: [SqliteVec.path()], database: HexdocsMcp.Config.database()}
     ]
 
+    children =
+      if HexdocsMcp.Config.watch_enabled?() do
+        poll_interval = HexdocsMcp.Config.watch_poll_interval()
+
+        children ++
+          [
+            {HexdocsMcp.MixLockWatcher, [poll_interval: poll_interval, enabled: true]}
+          ]
+      else
+        children
+      end
+
     opts = [strategy: :one_for_one, name: HexdocsMcp.Supervisor]
     Supervisor.start_link(children, opts)
   end

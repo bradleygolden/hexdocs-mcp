@@ -45,6 +45,11 @@ That's it! The MCP server will now automatically handle downloading and using th
   - Allows setting multiple comma-separated paths to mix.exs files
   - First valid path is used when fetching package documentation
   - Simplifies workflow by not having to specify project path for every command
+- Added automatic monitoring of mix.lock files with `watch` command
+  - Automatically fetches and updates package documentation when dependencies change
+  - Configure with `HEXDOCS_MCP_WATCH_ENABLED` and `HEXDOCS_MCP_WATCH_INTERVAL` environment variables
+  - Commands for managing watched projects: enable, disable, status, add, remove, now
+  - Intelligently processes only dependencies declared in mix.exs
 
 ### Changed
 - Updated code to comply with Credo rules

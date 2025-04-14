@@ -16,6 +16,8 @@ defmodule HexdocsMcp.CLI do
     fetch              Download and process docs for a package or project dependencies
                        Use --project PATH to fetch all dependencies from a mix.exs file
     search             Search in package docs using embeddings
+    watch              Control the mix.lock file watcher for automatic dependency fetching
+    daemon             Run the application in daemon mode (keeps running in background)
 
   Options:
     --help, -h         Show this help
@@ -26,7 +28,11 @@ defmodule HexdocsMcp.CLI do
     {:ok, _} = HexdocsMcp.Application.start(nil, nil)
     args = Args.get_arguments()
     main(args)
-    System.halt(0)
+
+    if args != ["daemon"] do
+      System.halt(0)
+    end
+
     {:ok, self()}
   end
 
@@ -47,6 +53,21 @@ defmodule HexdocsMcp.CLI do
 
   defp do_main(["search" | args]) do
     HexdocsMcp.Config.cli_search_module().main(args)
+  end
+
+  defp do_main(["watch" | args]) do
+    HexdocsMcp.Config.cli_watch_module().main(args)
+  end
+
+  defp do_main(["daemon"]) do
+    Utils.output_info("Running in daemon mode...")
+
+    if !HexdocsMcp.MixLockWatcher.enabled?() do
+      HexdocsMcp.CLI.Watch.main(["enable"])
+    end
+
+    # Keep the process running
+    Process.sleep(:infinity)
   end
 
   defp do_main(_args), do: usage()

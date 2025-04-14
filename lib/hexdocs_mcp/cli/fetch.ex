@@ -27,6 +27,10 @@ defmodule HexdocsMcp.CLI.Fetch do
       HEXDOCS_MCP_MIX_PROJECT_PATHS - Comma-separated list of mix.exs file paths (alternative to --project)
                                       Example: export HEXDOCS_MCP_MIX_PROJECT_PATHS="/path/to/project1/mix.exs,/path/to/project2/mix.exs"
                                       When specified with a package name, the first valid path is used
+      HEXDOCS_MCP_WATCH_ENABLED     - Set to "true" or "1" to enable automatic watching of mix.lock files
+                                      When enabled, the system will poll for changes and automatically fetch
+                                      new or updated dependencies declared in watched mix.exs files
+      HEXDOCS_MCP_WATCH_INTERVAL    - Polling interval in milliseconds (default: 60000)
 
     Process:
       1. Checks if embeddings exist (skips remaining steps unless --force is used)
@@ -148,7 +152,7 @@ defmodule HexdocsMcp.CLI.Fetch do
       end)
   end
 
-  defp process_project_deps(%Context{project_path: path} = context) do
+  def process_project_deps(%Context{project_path: path} = context) do
     Utils.output_info("Reading dependencies from #{path}...")
 
     try do
