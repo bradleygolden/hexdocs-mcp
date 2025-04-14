@@ -36,3 +36,7 @@ defmodule HexdocsMcp.Behaviours.Ollama do
   @callback init(opts :: term()) :: map()
   @callback embed(client :: map(), opts :: keyword()) :: {:ok, map()} | {:error, term()}
 end
+
+defmodule HexdocsMcp.Behaviours.MixDeps do
+  @callback read_deps(String.t()) :: [{String.t(), String.t() | nil}]
+end

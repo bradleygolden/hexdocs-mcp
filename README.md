@@ -72,14 +72,32 @@ But you can update it to be available in the :dev environment:
 
 ## Configuration
 
-By default, the `fetch` command stores all data in `~/.hexdocs_mcp` in the user's home directory. You can change this location by setting the `HEXDOCS_MCP_PATH` environment variable:
+### Environment Variables
+
+The following environment variables can be used to configure the tool:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `HEXDOCS_MCP_PATH` | Path where data will be stored | `~/.hexdocs_mcp` |
+| `HEXDOCS_MCP_DEFAULT_EMBEDDING_MODEL` | Default model to use for embeddings | `nomic-embed-text` |
+| `HEXDOCS_MCP_MIX_PROJECT_PATHS` | Comma-separated list of paths to mix.exs files | (none) |
+
+#### Examples:
 
 ```bash
-# Example: Set custom storage location
+# Set custom storage location
 export HEXDOCS_MCP_PATH=/path/to/custom/directory
+
+# Use a different default embedding model
+export HEXDOCS_MCP_DEFAULT_EMBEDDING_MODEL=all-minilm
+
+# Configure common project paths to avoid specifying --project flag each time
+export HEXDOCS_MCP_MIX_PROJECT_PATHS="/path/to/project1/mix.exs,/path/to/project2/mix.exs"
 ```
 
-This is also configurable in the MCP configuration for the server:
+### MCP Server Configuration
+
+You can also configure environment variables in the MCP configuration for the server:
 
 ```json
 {
@@ -90,7 +108,9 @@ This is also configurable in the MCP configuration for the server:
         "..."
       ],
       "env": {
-        "HEXDOCS_MCP_PATH": "/path/to/custom/directory"
+        "HEXDOCS_MCP_PATH": "/path/to/custom/directory",
+        "HEXDOCS_MCP_DEFAULT_EMBEDDING_MODEL": "all-minilm",
+        "HEXDOCS_MCP_MIX_PROJECT_PATHS": "/path/to/project1/mix.exs,/path/to/project2/mix.exs"
       }
     }
   }
@@ -125,6 +145,19 @@ Use a specific embedding model when fetching:
 
 ```bash
 mix hex.docs.mcp fetch phoenix --model all-minilm
+```
+
+Fetch documentation for a package using the version from your project:
+
+```bash
+mix hex.docs.mcp fetch phoenix --project path/to/mix.exs
+```
+
+Configure project paths to avoid specifying them every time:
+
+```bash
+export HEXDOCS_MCP_MIX_PROJECT_PATHS="/path/to/project1/mix.exs,/path/to/project2/mix.exs"
+mix hex.docs.mcp fetch phoenix  # Will use the first path from HEXDOCS_MCP_MIX_PROJECT_PATHS
 ```
 
 Search in the existing embeddings:
