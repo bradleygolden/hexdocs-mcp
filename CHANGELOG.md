@@ -40,6 +40,10 @@ That's it! The MCP server will now automatically handle downloading and using th
 
 ### Added
 - Added Styler formatter plugin for consistent code style enforcement
+- Added Credo static code analyzer for code quality enforcement
+
+### Changed
+- Updated code to comply with Credo rules
 
 ## [0.2.0]
 

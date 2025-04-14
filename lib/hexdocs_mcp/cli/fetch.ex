@@ -349,46 +349,48 @@ defmodule HexdocsMcp.CLI.Fetch do
   defp create_embedding_progress_callback do
     fn current, total, step ->
       step = step || :processing
-
-      case step do
-        :processing ->
-          progress_fn =
-            case Process.get(:processing_progress_fn) do
-              nil ->
-                fn_with_total = Progress.progress_bar("Processing embeddings", total)
-                Process.put(:processing_progress_fn, fn_with_total)
-                fn_with_total
-
-              existing ->
-                existing
-            end
-
-          progress_fn.(current)
-
-        :saving ->
-          progress_fn =
-            case Process.get(:saving_progress_fn) do
-              nil ->
-                fn_with_total = Progress.progress_bar("Saving embeddings", total)
-                Process.put(:saving_progress_fn, fn_with_total)
-                fn_with_total
-
-              existing ->
-                existing
-            end
-
-          progress_fn.(current)
-
-        _ ->
-          progress_fn =
-            Process.get(
-              :processing_progress_fn,
-              Progress.progress_bar("Processing embeddings", total)
-            )
-
-          progress_fn.(current)
-      end
+      progress_fn = get_progress_fn_for_step(step, total)
+      progress_fn.(current)
     end
+  end
+
+  defp get_progress_fn_for_step(step, total) do
+    case step do
+      :processing -> get_or_create_processing_progress_fn(total)
+      :saving -> get_or_create_saving_progress_fn(total)
+      _ -> get_default_progress_fn(total)
+    end
+  end
+
+  defp get_or_create_processing_progress_fn(total) do
+    case Process.get(:processing_progress_fn) do
+      nil ->
+        fn_with_total = Progress.progress_bar("Processing embeddings", total)
+        Process.put(:processing_progress_fn, fn_with_total)
+        fn_with_total
+
+      existing ->
+        existing
+    end
+  end
+
+  defp get_or_create_saving_progress_fn(total) do
+    case Process.get(:saving_progress_fn) do
+      nil ->
+        fn_with_total = Progress.progress_bar("Saving embeddings", total)
+        Process.put(:saving_progress_fn, fn_with_total)
+        fn_with_total
+
+      existing ->
+        existing
+    end
+  end
+
+  defp get_default_progress_fn(total) do
+    Process.get(
+      :processing_progress_fn,
+      Progress.progress_bar("Processing embeddings", total)
+    )
   end
 
   defp parse(args) do

@@ -66,10 +66,11 @@ defmodule HexdocsMcp.MixProject do
       {:plug_cowboy, "~> 2.0", only: :test},
       {:mox, "~> 1.0", only: :test},
       {:mix_test_watch, "~> 1.2", only: :dev, runtime: false},
+      {:styler, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
 
       # Burrito for packaging
-      {:burrito, "~> 1.0"},
-      {:styler, "~> 1.4", only: [:dev, :test], runtime: false}
+      {:burrito, "~> 1.0"}
     ]
   end
 

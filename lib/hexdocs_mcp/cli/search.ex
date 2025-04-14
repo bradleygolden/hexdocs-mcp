@@ -75,19 +75,21 @@ defmodule HexdocsMcp.CLI.Search do
       step = step || :computing
 
       if step == :computing do
-        progress_fn =
-          case Process.get(:search_progress_fn) do
-            nil ->
-              fn_with_correct_total = Progress.progress_bar("Computing similarity scores", total)
-              Process.put(:search_progress_fn, fn_with_correct_total)
-              fn_with_correct_total
-
-            existing_fn ->
-              existing_fn
-          end
-
+        progress_fn = get_or_create_progress_fn(total)
         progress_fn.(current)
       end
+    end
+  end
+
+  defp get_or_create_progress_fn(total) do
+    case Process.get(:search_progress_fn) do
+      nil ->
+        fn_with_correct_total = Progress.progress_bar("Computing similarity scores", total)
+        Process.put(:search_progress_fn, fn_with_correct_total)
+        fn_with_correct_total
+
+      existing_fn ->
+        existing_fn
     end
   end
 

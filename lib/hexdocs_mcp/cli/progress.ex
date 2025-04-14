@@ -142,9 +142,7 @@ defmodule HexdocsMcp.CLI.Progress do
         )
 
         # If we're done, add a completion message on a new line
-        if count >= total do
-          IO.write("\n#{green()}✓#{reset()} #{bright()}#{message}#{reset()} completed\n")
-        end
+        write_completion_message(count, total, message)
 
         # Store the last update time, percentage and count
         Process.put(:last_progress_update, now)
@@ -261,29 +259,10 @@ defmodule HexdocsMcp.CLI.Progress do
     IO.write("\r\e[2K")
 
     # Build the workflow line
-    line =
-      Enum.map_join(stages, " → ", fn stage ->
-        cond do
-          stage in completed_stages ->
-            "#{green()}✓#{reset()} #{stage}"
-
-          stage == current_stage and not completed ->
-            if spinner_frame,
-              do: "#{cyan()}#{spinner_frame}#{reset()} #{stage}",
-              else: "  #{stage}"
-
-          true ->
-            "  #{stage}"
-        end
-      end)
+    line = build_workflow_line(stages, completed_stages, current_stage, completed, spinner_frame)
 
     # Add final checkmark if completed
-    final_line =
-      if completed do
-        "#{line} #{green()}✓#{reset()}"
-      else
-        line
-      end
+    final_line = maybe_add_completion_mark(line, completed)
 
     # Write the line
     IO.write(final_line)
@@ -291,6 +270,47 @@ defmodule HexdocsMcp.CLI.Progress do
     # Add newline if completed
     if completed do
       IO.write("\n")
+    end
+  end
+
+  defp build_workflow_line(stages, completed_stages, current_stage, completed, spinner_frame) do
+    Enum.map_join(stages, " → ", fn stage ->
+      format_stage(stage, completed_stages, current_stage, completed, spinner_frame)
+    end)
+  end
+
+  defp format_stage(stage, completed_stages, current_stage, completed, spinner_frame) do
+    cond do
+      stage in completed_stages ->
+        "#{green()}✓#{reset()} #{stage}"
+
+      stage == current_stage and not completed ->
+        format_current_stage(stage, spinner_frame)
+
+      true ->
+        "  #{stage}"
+    end
+  end
+
+  defp format_current_stage(stage, spinner_frame) do
+    if spinner_frame do
+      "#{cyan()}#{spinner_frame}#{reset()} #{stage}"
+    else
+      "  #{stage}"
+    end
+  end
+
+  defp maybe_add_completion_mark(line, completed) do
+    if completed do
+      "#{line} #{green()}✓#{reset()}"
+    else
+      line
+    end
+  end
+
+  defp write_completion_message(count, total, message) do
+    if count >= total do
+      IO.write("\n#{green()}✓#{reset()} #{bright()}#{message}#{reset()} completed\n")
     end
   end
 end

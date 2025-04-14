@@ -162,20 +162,24 @@ defmodule HexdocsMcp.Embeddings do
     if Enum.empty?(changesets) do
       {:ok, count}
     else
-      Repo.transaction(fn ->
-        changesets
-        |> Enum.with_index(1)
-        |> Enum.each(fn {changeset, idx} ->
-          Repo.insert!(changeset, on_conflict: :replace_all)
-
-          if callback && rem(idx, 10) == 0, do: callback.(idx, length(changesets), :saving)
-        end)
-
-        if callback, do: callback.(length(changesets), length(changesets), :saving)
-      end)
-
+      do_persist_changesets(changesets, callback)
       {:ok, count}
     end
+  end
+
+  defp do_persist_changesets(changesets, callback) do
+    Repo.transaction(fn ->
+      changesets
+      |> Enum.with_index(1)
+      |> Enum.each(&insert_and_callback(&1, length(changesets), callback))
+
+      if callback, do: callback.(length(changesets), length(changesets), :saving)
+    end)
+  end
+
+  defp insert_and_callback({changeset, idx}, total, callback) do
+    Repo.insert!(changeset, on_conflict: :replace_all)
+    if callback && rem(idx, 10) == 0, do: callback.(idx, total, :saving)
   end
 
   @doc """

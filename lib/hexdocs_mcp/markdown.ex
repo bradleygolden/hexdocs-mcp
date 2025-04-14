@@ -17,10 +17,10 @@ defmodule HexdocsMcp.Markdown do
   end
 
   defp prep_document(content) do
-    if is_html_document?(content), do: content, else: wrap_fragment(content)
+    if html_document?(content), do: content, else: wrap_fragment(content)
   end
 
-  defp is_html_document?(content) do
+  defp html_document?(content) do
     content
     |> String.downcase()
     |> String.contains?(["<html", "<body", "<head"])
@@ -61,23 +61,24 @@ defmodule HexdocsMcp.Markdown do
   @navigation_classes ["footer", "menu", "nav", "sidebar", "aside"]
 
   defp remove_nav_elements(document) do
-    Floki.find_and_update(document, "*", fn
-      {tag, attrs} when is_list(attrs) ->
-        case List.keyfind(attrs, "class", 0) do
-          {"class", class} ->
-            if contains_nav_class?(class) && tag != "body" do
-              :delete
-            else
-              {tag, attrs}
-            end
+    Floki.find_and_update(document, "*", &process_nav_element/1)
+  end
 
-          _ ->
-            {tag, attrs}
-        end
+  defp process_nav_element({tag, attrs} = element) when is_list(attrs) do
+    case List.keyfind(attrs, "class", 0) do
+      {"class", class} -> maybe_delete_nav_element(tag, attrs, class)
+      _ -> element
+    end
+  end
 
-      element ->
-        element
-    end)
+  defp process_nav_element(element), do: element
+
+  defp maybe_delete_nav_element(tag, attrs, class) do
+    if contains_nav_class?(class) && tag != "body" do
+      :delete
+    else
+      {tag, attrs}
+    end
   end
 
   defp contains_nav_class?(class) do
