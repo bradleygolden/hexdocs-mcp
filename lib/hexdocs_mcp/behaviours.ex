@@ -1,12 +1,15 @@
 defmodule HexdocsMcp.Behaviours.CLI.Fetch do
+  @moduledoc false
   @callback main(list) :: :ok | :error
 end
 
 defmodule HexdocsMcp.Behaviours.CLI.Search do
+  @moduledoc false
   @callback main(list) :: :ok | :error
 end
 
 defmodule HexdocsMcp.Behaviours.Docs do
+  @moduledoc false
   @callback fetch(String.t(), String.t() | nil) :: {String.t(), non_neg_integer()}
 end
 
@@ -29,6 +32,7 @@ defmodule HexdocsMcp.Behaviours.Embeddings do
 end
 
 defmodule HexdocsMcp.Behaviours.Ollama do
+  @moduledoc false
   @callback init(opts :: term()) :: map()
   @callback embed(client :: map(), opts :: keyword()) :: {:ok, map()} | {:error, term()}
 end

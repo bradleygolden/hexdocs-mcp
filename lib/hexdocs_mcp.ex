@@ -1,4 +1,5 @@
 defmodule HexdocsMcp do
+  @moduledoc false
   defdelegate generate_embeddings(package, version, model, opts \\ []),
     to: HexdocsMcp.Embeddings,
     as: :generate

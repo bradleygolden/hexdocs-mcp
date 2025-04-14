@@ -5,7 +5,8 @@ defmodule HexdocsMcp.CLI do
   use Application
 
   alias HexdocsMcp.CLI.Utils
-  alias HexdocsMcp.{Repo, Migrations}
+  alias HexdocsMcp.Migrations
+  alias HexdocsMcp.Repo
 
   @usage """
   Usage: [SYSTEM_COMMAND] COMMAND [options]
@@ -76,9 +77,7 @@ defmodule HexdocsMcp.CLI do
   end
 
   defp init_database do
-    Migrations.create_embeddings_table()
-    |> Enum.each(fn sql -> Repo.query!(sql) end)
-
+    Enum.each(Migrations.create_embeddings_table(), fn sql -> Repo.query!(sql) end)
     Utils.output_info("#{Utils.check()} Database initialized successfully!")
   end
 end

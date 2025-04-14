@@ -9,16 +9,18 @@ defmodule HexdocsMcp.DataCase do
 
   use ExUnit.CaseTemplate
 
+  alias Ecto.Adapters.SQL.Sandbox
+
   using do
     quote do
-      alias HexdocsMcp.Repo
-
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
       import ExUnit.CaptureIO
       import HexdocsMcp.DataCase
       import HexdocsMcp.Fixtures
+
+      alias HexdocsMcp.Repo
     end
   end
 
@@ -26,10 +28,10 @@ defmodule HexdocsMcp.DataCase do
     Mox.stub_with(HexdocsMcp.MockOllama, HexdocsMcp.MockOllamaClient)
     Mox.stub_with(HexdocsMcp.MockDocs, HexdocsMcp.MockHexdocsCli)
 
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(HexdocsMcp.Repo)
+    :ok = Sandbox.checkout(HexdocsMcp.Repo)
 
-    unless tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(HexdocsMcp.Repo, {:shared, self()})
+    if !tags[:async] do
+      Sandbox.mode(HexdocsMcp.Repo, {:shared, self()})
     end
 
     HexdocsMcp.SqlSandbox.setup()

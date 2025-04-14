@@ -7,15 +7,14 @@ defmodule HexdocsMcp.Application do
     download_sqlite_vec()
 
     children = [
-      {HexdocsMcp.Repo,
-       load_extensions: [SqliteVec.path()], database: HexdocsMcp.Config.database()}
+      {HexdocsMcp.Repo, load_extensions: [SqliteVec.path()], database: HexdocsMcp.Config.database()}
     ]
 
     opts = [strategy: :one_for_one, name: HexdocsMcp.Supervisor]
     Supervisor.start_link(children, opts)
   end
 
-  defp download_sqlite_vec() do
+  defp download_sqlite_vec do
     version = SqliteVec.Downloader.default_version()
 
     output_dir =

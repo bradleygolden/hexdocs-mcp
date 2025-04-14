@@ -1,9 +1,10 @@
 defmodule HexdocsMcp.Docs do
+  @moduledoc false
   def fetch(package, version) do
     args =
-      if version != "latest",
-        do: ["hex.docs", "fetch", package, version],
-        else: ["hex.docs", "fetch", package]
+      if version == "latest",
+        do: ["hex.docs", "fetch", package],
+        else: ["hex.docs", "fetch", package, version]
 
     result = System.cmd("mix", args, stderr_to_stdout: true)
 

@@ -3,6 +3,7 @@ defmodule HexdocsMcp.Embeddings.Embedding do
   Schema for storing document embeddings using SQLiteVec.
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
   schema "embeddings" do

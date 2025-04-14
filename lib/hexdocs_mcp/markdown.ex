@@ -1,4 +1,5 @@
 defmodule HexdocsMcp.Markdown do
+  @moduledoc false
   def from_html(html) do
     html
     |> preprocess_content()
@@ -80,7 +81,7 @@ defmodule HexdocsMcp.Markdown do
   end
 
   defp contains_nav_class?(class) do
-    class_list = class |> String.split(" ")
+    class_list = String.split(class, " ")
     Enum.any?(@navigation_classes, &Enum.member?(class_list, &1))
   end
 
@@ -94,8 +95,7 @@ defmodule HexdocsMcp.Markdown do
     Enum.map_join(document, "", &process_node/1)
   end
 
-  defp process_node({tag, _, children} = _node)
-       when tag in ["h1", "h2", "h3", "h4", "h5", "h6"] do
+  defp process_node({tag, _, children} = _node) when tag in ["h1", "h2", "h3", "h4", "h5", "h6"] do
     level = String.to_integer(String.last(tag))
     heading_marker = String.duplicate("#", level)
     newline() <> heading_marker <> " " <> process_children(children) <> newline()
@@ -109,16 +109,13 @@ defmodule HexdocsMcp.Markdown do
 
   defp process_node({"details", _, children}), do: process_children(children) <> newline()
 
-  defp process_node({"summary", _, children}),
-    do: "**#{process_children(children)}**" <> newline()
+  defp process_node({"summary", _, children}), do: "**#{process_children(children)}**" <> newline()
 
-  defp process_node({"pre", _, [{"code", [{"class", classes}], children}]}),
-    do: process_code_block(classes, children)
+  defp process_node({"pre", _, [{"code", [{"class", classes}], children}]}), do: process_code_block(classes, children)
 
   defp process_node({"pre", _, children}), do: process_code_block(children)
 
-  defp process_node({"blockquote", _, children}),
-    do: newline() <> "> #{process_children(children)}" <> newline()
+  defp process_node({"blockquote", _, children}), do: newline() <> "> #{process_children(children)}" <> newline()
 
   defp process_node({"table", _, children}), do: process_table(children)
 
@@ -144,8 +141,7 @@ defmodule HexdocsMcp.Markdown do
 
   defp process_node({"img", [{"src", src}, {"alt", alt}], _}), do: "![#{alt}](#{src})"
 
-  defp process_node({"caption", _, children}),
-    do: "| " <> process_children(children) <> " |" <> newline()
+  defp process_node({"caption", _, children}), do: "| " <> process_children(children) <> " |" <> newline()
 
   defp process_node({"figcaption", _, children}), do: "**#{process_children(children)}**"
 
@@ -153,15 +149,13 @@ defmodule HexdocsMcp.Markdown do
 
   defp process_node({"hr", _, _}), do: newline() <> newline() <> "---" <> newline(2)
 
-  defp process_node({"section", _, children}),
-    do: newline() <> "#{process_children(children)}" <> newline()
+  defp process_node({"section", _, children}), do: newline() <> "#{process_children(children)}" <> newline()
 
-  defp process_node({"article", _, children}),
-    do: newline() <> "#{process_children(children)}" <> newline()
+  defp process_node({"article", _, children}), do: newline() <> "#{process_children(children)}" <> newline()
 
   defp process_node({"picture", _, children}) do
     with {"img", attrs, _} <- Enum.find(children, fn {tag, _, _} -> tag == "img" end),
-         %{"alt" => alt, "src" => src} <- Enum.into(attrs, %{}) do
+         %{"alt" => alt, "src" => src} <- Map.new(attrs) do
       "![#{alt}](#{src})"
     end
   end
@@ -220,8 +214,7 @@ defmodule HexdocsMcp.Markdown do
 
   defp process_list_item(other), do: process_node(other)
 
-  defp process_ordered_list_item({"li", _, children}, index),
-    do: "#{index}. " <> process_children(children)
+  defp process_ordered_list_item({"li", _, children}, index), do: "#{index}. " <> process_children(children)
 
   defp process_ordered_list_item(other, _index), do: process_node(other)
 
@@ -315,8 +308,7 @@ defmodule HexdocsMcp.Markdown do
 
   defp header_separator({"colgroup", _, cols}) do
     separator =
-      cols
-      |> Enum.map_join(" | ", fn _ -> "---" end)
+      Enum.map_join(cols, " | ", fn _ -> "---" end)
 
     "| " <> separator <> " |"
   end

@@ -1,13 +1,14 @@
 defmodule HexdocsMcp.Fixtures do
-  def package() do
+  @moduledoc false
+  def package do
     "fake_test_package"
   end
 
-  def html_filename() do
+  def html_filename do
     "api-reference.html"
   end
 
-  def html() do
+  def html do
     """
     <!DOCTYPE html>
     <html>

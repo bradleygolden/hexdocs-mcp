@@ -38,6 +38,9 @@ That's it! The MCP server will now automatically handle downloading and using th
 
 ## [Unreleased]
 
+### Added
+- Added Styler formatter plugin for consistent code style enforcement
+
 ## [0.2.0]
 
 ### Added

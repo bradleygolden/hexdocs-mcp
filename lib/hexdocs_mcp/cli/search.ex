@@ -3,7 +3,8 @@ defmodule HexdocsMcp.CLI.Search do
   Functions for searching through Hex documentation using embeddings.
   """
 
-  alias HexdocsMcp.CLI.{Progress, Utils}
+  alias HexdocsMcp.CLI.Progress
+  alias HexdocsMcp.CLI.Utils
 
   @usage """
   Usage: [SYSTEM_COMMAND] search PACKAGE [VERSION] [options]
@@ -33,6 +34,7 @@ defmodule HexdocsMcp.CLI.Search do
   """
 
   defmodule Context do
+    @moduledoc false
     @enforce_keys [:query, :package, :version, :model, :help?]
     defstruct query: nil,
               package: nil,
@@ -114,11 +116,9 @@ defmodule HexdocsMcp.CLI.Search do
 
     Enum.each(results, fn %{score: score, metadata: metadata} ->
       # Format score to 3 decimal places
-      formatted_score = :io_lib.format("~.3f", [score]) |> IO.iodata_to_binary()
+      formatted_score = "~.3f" |> :io_lib.format([score]) |> IO.iodata_to_binary()
 
-      Utils.output_info(
-        "\n#{IO.ANSI.bright()}Result (score: #{formatted_score})#{IO.ANSI.reset()}"
-      )
+      Utils.output_info("\n#{IO.ANSI.bright()}Result (score: #{formatted_score})#{IO.ANSI.reset()}")
 
       Utils.output_info("  File: #{metadata.source_file}")
       Utils.output_info("  Text: #{metadata.text}")

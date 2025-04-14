@@ -5,14 +5,15 @@ defmodule HexdocsMcp.Embeddings do
 
   @behaviour HexdocsMcp.Behaviours.Embeddings
 
-  require Logger
-  alias Jason
-  alias HexdocsMcp.Repo
+  import Ecto.Query
+  import SqliteVec.Ecto.Query
+
+  alias HexdocsMcp.Behaviours.Embeddings
   alias HexdocsMcp.Embeddings.Embedding
   alias HexdocsMcp.Ollama
+  alias HexdocsMcp.Repo
 
-  import SqliteVec.Ecto.Query
-  import Ecto.Query
+  require Logger
 
   @default_top_k 3
   @batch_size 10
@@ -32,7 +33,7 @@ defmodule HexdocsMcp.Embeddings do
   ## Returns
     * `{:ok, count}` - The number of embeddings generated
   """
-  @impl HexdocsMcp.Behaviours.Embeddings
+  @impl Embeddings
   def generate(package, version, model, opts \\ []) do
     progress_callback = opts[:progress_callback]
 
@@ -77,8 +78,8 @@ defmodule HexdocsMcp.Embeddings do
 
   defp process_batch(batch, {count, changesets, processed}, client, model, total, callback) do
     batch_results =
-      Task.async_stream(
-        batch,
+      batch
+      |> Task.async_stream(
         &process_chunk_file(&1, client, model),
         max_concurrency: @max_concurrency,
         timeout: @timeout
@@ -98,8 +99,9 @@ defmodule HexdocsMcp.Embeddings do
          {:ok, chunk_data} <- Jason.decode(chunk_json),
          text = chunk_data["text"],
          metadata = chunk_data["metadata"],
-         {:ok, response} <- Ollama.embed(client, model: model, input: text),
-         embedding <- extract_embedding(response, chunk_file) do
+         {:ok, response} <- Ollama.embed(client, model: model, input: text) do
+      embedding = extract_embedding(response, chunk_file)
+
       if embedding do
         {:ok, create_embedding_changeset(text, metadata, embedding)}
       else
@@ -234,12 +236,7 @@ defmodule HexdocsMcp.Embeddings do
     end
   end
 
-  defp search_with_vector(
-         query_vector,
-         package,
-         version,
-         top_k
-       ) do
+  defp search_with_vector(query_vector, package, version, top_k) do
     base_query = build_base_query(package, version)
     v = SqliteVec.Float32.new(query_vector)
 
@@ -299,7 +296,7 @@ defmodule HexdocsMcp.Embeddings do
     * `true` - Embeddings exist
     * `false` - No embeddings exist
   """
-  @impl HexdocsMcp.Behaviours.Embeddings
+  @impl Embeddings
   def embeddings_exist?(package, version) do
     version = version || "latest"
 
@@ -322,7 +319,7 @@ defmodule HexdocsMcp.Embeddings do
   ## Returns
     * `{:ok, count}` - The number of embeddings deleted
   """
-  @impl HexdocsMcp.Behaviours.Embeddings
+  @impl Embeddings
   def delete_embeddings(package, version) do
     version = version || "latest"
 

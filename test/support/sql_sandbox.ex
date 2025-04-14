@@ -3,7 +3,9 @@ defmodule HexdocsMcp.SqlSandbox do
   Setup for SQLite in-memory database for tests.
   """
 
-  alias HexdocsMcp.{Repo, Migrations}
+  alias HexdocsMcp.Migrations
+  alias HexdocsMcp.Repo
+
   require Logger
 
   @doc """
@@ -18,9 +20,7 @@ defmodule HexdocsMcp.SqlSandbox do
     Logger.debug("Setting up test database tables...")
 
     # Use the shared migrations module to create tables
-    Migrations.create_embeddings_table()
-    |> Enum.each(fn sql -> Repo.query!(sql) end)
-
+    Enum.each(Migrations.create_embeddings_table(), fn sql -> Repo.query!(sql) end)
     :ok
   end
 end

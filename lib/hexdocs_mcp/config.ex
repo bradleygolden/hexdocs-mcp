@@ -1,4 +1,5 @@
 defmodule HexdocsMcp.Config do
+  @moduledoc false
   def data_path do
     Application.fetch_env!(:hexdocs_mcp, :data_path)
   end

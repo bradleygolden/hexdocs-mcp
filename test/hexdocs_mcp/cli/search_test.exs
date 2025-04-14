@@ -1,9 +1,10 @@
 defmodule HexdocsMcp.CLI.SearchTest do
   use HexdocsMcp.DataCase, async: false
 
-  alias HexdocsMcp.CLI.Search
-
   import Mox
+
+  alias HexdocsMcp.CLI.Fetch
+  alias HexdocsMcp.CLI.Search
 
   setup :verify_on_exit!
 
@@ -16,7 +17,7 @@ defmodule HexdocsMcp.CLI.SearchTest do
     query = "how to configure channels"
 
     capture_io(fn ->
-      assert :ok = HexdocsMcp.CLI.Fetch.main([package, version])
+      assert :ok = Fetch.main([package, version])
     end)
 
     output =
@@ -37,7 +38,7 @@ defmodule HexdocsMcp.CLI.SearchTest do
     version = "latest"
 
     capture_io(fn ->
-      assert :ok = HexdocsMcp.CLI.Fetch.main([package])
+      assert :ok = Fetch.main([package])
     end)
 
     output =
@@ -58,7 +59,7 @@ defmodule HexdocsMcp.CLI.SearchTest do
     custom_model = "all-minilm"
 
     capture_io(fn ->
-      assert :ok = HexdocsMcp.CLI.Fetch.main([package, version, "--model", custom_model])
+      assert :ok = Fetch.main([package, version, "--model", custom_model])
     end)
 
     output =
@@ -140,7 +141,7 @@ defmodule HexdocsMcp.CLI.SearchTest do
     limit = 5
 
     capture_io(fn ->
-      assert :ok = HexdocsMcp.CLI.Fetch.main([package, version])
+      assert :ok = Fetch.main([package, version])
     end)
 
     output =

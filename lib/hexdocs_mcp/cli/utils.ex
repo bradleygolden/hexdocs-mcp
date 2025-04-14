@@ -45,8 +45,7 @@ defmodule HexdocsMcp.CLI.Utils do
   """
   def parse_package_args([package]) when is_binary(package), do: {package, nil}
 
-  def parse_package_args([package, version]) when is_binary(package) and is_binary(version),
-    do: {package, version}
+  def parse_package_args([package, version]) when is_binary(package) and is_binary(version), do: {package, version}
 
   def parse_package_args(_), do: {nil, nil}
 end

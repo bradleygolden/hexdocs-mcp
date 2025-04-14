@@ -1,10 +1,11 @@
 defmodule HexdocsMcp.CLI.FetchTest do
   use HexdocsMcp.DataCase, async: false
 
+  import Mox
+
   alias HexdocsMcp.CLI.Fetch
   alias HexdocsMcp.Embeddings
   alias HexdocsMcp.MockDocs
-  import Mox
 
   setup :verify_on_exit!
 
@@ -154,7 +155,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
   end
 
   defp assert_chunks_generated(package, _version) do
-    chunk_filename = String.split(html_filename(), ".html") |> List.first()
+    chunk_filename = html_filename() |> String.split(".html") |> List.first()
 
     chunk_file =
       Path.join([

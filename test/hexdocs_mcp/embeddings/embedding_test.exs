@@ -1,5 +1,6 @@
 defmodule HexdocsMcp.Embeddings.EmbeddingTest do
   use HexdocsMcp.DataCase, async: true
+
   alias HexdocsMcp.Embeddings.Embedding
 
   describe "schema" do

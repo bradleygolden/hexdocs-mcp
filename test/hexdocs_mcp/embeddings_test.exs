@@ -125,9 +125,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
       end
 
       {:ok, _count} =
-        Embeddings.generate(package, @default_version, @default_model,
-          progress_callback: progress_callback
-        )
+        Embeddings.generate(package, @default_version, @default_model, progress_callback: progress_callback)
 
       assert_received {:progress, _, _, :processing}
       assert_received {:progress, _, _, :saving}
@@ -356,9 +354,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
         %{generating: 0, searching: 0}
       end
 
-      Embeddings.search("test query", package, @default_version, @default_model,
-        progress_callback: progress_callback
-      )
+      Embeddings.search("test query", package, @default_version, @default_model, progress_callback: progress_callback)
 
       assert_received {:search_progress, _, _, :generating}
       assert_received {:search_progress, _, _, :searching}
@@ -400,7 +396,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
 
   defp create_test_embedding(package, version) do
     embedding_vector = List.duplicate(0.1, 384)
-    rand_id = :rand.uniform(10000)
+    rand_id = :rand.uniform(10_000)
 
     embedding_data = %{
       package: package,

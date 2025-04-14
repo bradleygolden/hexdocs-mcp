@@ -233,24 +233,22 @@ defmodule HexdocsMcp.CLI.Progress do
 
   # Private function to animate the spinner
   defp animate_spinner(stage_name) do
-    try do
-      Enum.reduce(Stream.cycle(@spinner_frames), 0, fn frame, i ->
-        # Update spinner frame every 80ms
-        :timer.sleep(80)
+    Enum.reduce(Stream.cycle(@spinner_frames), 0, fn frame, i ->
+      # Update spinner frame every 80ms
+      :timer.sleep(80)
 
-        # Render the workflow line with current spinner frame
-        render_workflow_line(false, frame)
+      # Render the workflow line with current spinner frame
+      render_workflow_line(false, frame)
 
-        # Check if we should exit
-        if Process.get(:workflow_current_stage) != stage_name do
-          throw(:exit)
-        end
+      # Check if we should exit
+      if Process.get(:workflow_current_stage) != stage_name do
+        throw(:exit)
+      end
 
-        i + 1
-      end)
-    catch
-      :exit -> :ok
-    end
+      i + 1
+    end)
+  catch
+    :exit -> :ok
   end
 
   # Render the workflow line
@@ -264,8 +262,7 @@ defmodule HexdocsMcp.CLI.Progress do
 
     # Build the workflow line
     line =
-      stages
-      |> Enum.map(fn stage ->
+      Enum.map_join(stages, " → ", fn stage ->
         cond do
           stage in completed_stages ->
             "#{green()}✓#{reset()} #{stage}"
@@ -279,7 +276,6 @@ defmodule HexdocsMcp.CLI.Progress do
             "  #{stage}"
         end
       end)
-      |> Enum.join(" → ")
 
     # Add final checkmark if completed
     final_line =

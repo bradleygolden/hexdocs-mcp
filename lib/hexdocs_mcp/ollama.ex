@@ -1,4 +1,5 @@
 defmodule HexdocsMcp.Ollama do
+  @moduledoc false
   @behaviour HexdocsMcp.Behaviours.Ollama
 
   @impl true

@@ -68,7 +68,8 @@ defmodule HexdocsMcp.MixProject do
       {:mix_test_watch, "~> 1.2", only: :dev, runtime: false},
 
       # Burrito for packaging
-      {:burrito, "~> 1.0"}
+      {:burrito, "~> 1.0"},
+      {:styler, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 

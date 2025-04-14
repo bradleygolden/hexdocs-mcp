@@ -25,12 +25,10 @@ defmodule HexdocsMcp.MockOllamaClient do
       end
 
     embedding =
-      case is_list(input) do
-        true ->
-          Enum.map(input, fn _ -> List.duplicate(0.1, embedding_size) end)
-
-        false ->
-          [List.duplicate(0.1, embedding_size)]
+      if is_list(input) do
+        Enum.map(input, fn _ -> List.duplicate(0.1, embedding_size) end)
+      else
+        [List.duplicate(0.1, embedding_size)]
       end
 
     # Track model usage if a test_pid is provided

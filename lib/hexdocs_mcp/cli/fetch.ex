@@ -3,7 +3,8 @@ defmodule HexdocsMcp.CLI.Fetch do
   Functions for fetching and processing Hex documentation.
   """
 
-  alias HexdocsMcp.CLI.{Progress, Utils}
+  alias HexdocsMcp.CLI.Progress
+  alias HexdocsMcp.CLI.Utils
   alias HexdocsMcp.Markdown
 
   @usage """
@@ -34,6 +35,7 @@ defmodule HexdocsMcp.CLI.Fetch do
   """
 
   defmodule Context do
+    @moduledoc false
     @enforce_keys [:package, :version, :model, :force?, :help?, :embeddings_module]
     defstruct package: nil,
               version: nil,
@@ -56,7 +58,7 @@ defmodule HexdocsMcp.CLI.Fetch do
     end
   end
 
-  def usage() do
+  def usage do
     String.replace(@usage, "[SYSTEM_COMMAND]", HexdocsMcp.Config.system_command())
   end
 
@@ -64,9 +66,7 @@ defmodule HexdocsMcp.CLI.Fetch do
     %Context{package: package, version: version, embeddings_module: embeddings_module} = context
 
     if embeddings_module.embeddings_exist?(package, version) do
-      Utils.output_info(
-        "#{Utils.check()} Embeddings for #{package} #{version} already exist, skipping fetch."
-      )
+      Utils.output_info("#{Utils.check()} Embeddings for #{package} #{version} already exist, skipping fetch.")
 
       Utils.output_info("  Use --force to re-fetch and update embeddings.")
 
@@ -82,9 +82,7 @@ defmodule HexdocsMcp.CLI.Fetch do
     if embeddings_module.embeddings_exist?(package, version) do
       {:ok, count} = embeddings_module.delete_embeddings(package, version)
 
-      Utils.output_info(
-        "#{Utils.check()} Removed #{count} existing embeddings for #{package} #{version || "latest"}."
-      )
+      Utils.output_info("#{Utils.check()} Removed #{count} existing embeddings for #{package} #{version || "latest"}.")
     end
 
     do_process_docs(context)
@@ -94,9 +92,7 @@ defmodule HexdocsMcp.CLI.Fetch do
     %Context{package: package, version: version, model: model} = context
     ensure_markdown_dir!(package)
 
-    Utils.output_info(
-      "Fetching documentation for #{package}#{if version, do: " #{version}", else: ""}..."
-    )
+    Utils.output_info("Fetching documentation for #{package}#{if version, do: " #{version}", else: ""}...")
 
     docs_path = execute_docs_fetch_quietly(package, version)
     verify_docs_path!(docs_path)
@@ -143,7 +139,7 @@ defmodule HexdocsMcp.CLI.Fetch do
   end
 
   defp verify_docs_path!(docs_path) do
-    unless File.dir?(docs_path), do: raise("Docs directory not found: #{docs_path}")
+    if !File.dir?(docs_path), do: raise("Docs directory not found: #{docs_path}")
   end
 
   defp verify_html_files!(html_files, docs_path) do
@@ -182,7 +178,7 @@ defmodule HexdocsMcp.CLI.Fetch do
 
   defp find_default_docs_path(package, version, output) do
     Utils.output_info("Could not parse docs path from output: \n#{output}")
-    docs_base = HexdocsMcp.Config.data_path() |> Path.join("docs")
+    docs_base = Path.join(HexdocsMcp.Config.data_path(), "docs")
 
     if version do
       Path.join([docs_base, "hexpm", package, version])
