@@ -6,7 +6,9 @@
       "args": [
         "dist/index.js"
       ],
-      "env": {}
+      "env": {
+        "NODE_ENV": "development"
+      }
     }
   }
 }
