@@ -163,7 +163,7 @@ defmodule HexdocsMcp.CLI.Fetch do
         {next_stage, complete} = Progress.workflow(["Fetching docs for dependencies"])
         next_stage.("Fetching docs for dependencies")
 
-        Enum.map(deps, fn {package, version} ->
+        Enum.each(deps, fn {package, version} ->
           Utils.output_info("\nProcessing #{package}#{if version, do: " #{version}", else: ""}")
 
           normalized_version = normalize_version_constraint(version)
@@ -542,76 +542,83 @@ defmodule HexdocsMcp.CLI.Fetch do
   end
 
   defp parse(args) do
-    {opts, args} =
-      OptionParser.parse!(args,
-        aliases: [
-          m: :model,
-          f: :force,
-          h: :help,
-          p: :project
-        ],
-        strict: [
-          model: :string,
-          force: :boolean,
-          help: :boolean,
-          project: :string
-        ]
-      )
-
+    {opts, args} = parse_options(args)
     {package, version} = Utils.parse_package_args(args)
     help? = opts[:help] || false
 
     project_path = get_project_path(opts[:project], package)
-
     model = opts[:model] || HexdocsMcp.Config.default_embedding_model()
     force? = opts[:force] || false
 
-    cond do
-      help? ->
-        {:ok,
-         %Context{
-           model: model,
-           force?: force?,
-           help?: true,
-           embeddings_module: HexdocsMcp.Config.embeddings_module()
-         }}
+    create_context(help?, package, version, project_path, model, force?)
+  end
 
-      package != nil and project_path != nil ->
-        {:ok,
-         %Context{
-           package: package,
-           version: version,
-           project_path: project_path,
-           model: model,
-           force?: force?,
-           help?: false,
-           embeddings_module: HexdocsMcp.Config.embeddings_module()
-         }}
+  defp parse_options(args) do
+    OptionParser.parse!(args,
+      aliases: [
+        m: :model,
+        f: :force,
+        h: :help,
+        p: :project
+      ],
+      strict: [
+        model: :string,
+        force: :boolean,
+        help: :boolean,
+        project: :string
+      ]
+    )
+  end
 
-      project_path != nil ->
-        {:ok,
-         %Context{
-           project_path: project_path,
-           model: model,
-           force?: force?,
-           help?: false,
-           embeddings_module: HexdocsMcp.Config.embeddings_module()
-         }}
+  defp create_context(true, _package, _version, _project_path, model, force?) do
+    {:ok,
+     %Context{
+       model: model,
+       force?: force?,
+       help?: true,
+       embeddings_module: HexdocsMcp.Config.embeddings_module()
+     }}
+  end
 
-      package != nil ->
-        {:ok,
-         %Context{
-           package: package,
-           version: version || "latest",
-           model: model,
-           force?: force?,
-           help?: false,
-           embeddings_module: HexdocsMcp.Config.embeddings_module()
-         }}
+  defp create_context(false, package, version, project_path, model, force?)
+       when not is_nil(package) and not is_nil(project_path) do
+    {:ok,
+     %Context{
+       package: package,
+       version: version,
+       project_path: project_path,
+       model: model,
+       force?: force?,
+       help?: false,
+       embeddings_module: HexdocsMcp.Config.embeddings_module()
+     }}
+  end
 
-      true ->
-        {:error, "Invalid arguments: must specify either PACKAGE or --project PATH"}
-    end
+  defp create_context(false, _package, _version, project_path, model, force?) when not is_nil(project_path) do
+    {:ok,
+     %Context{
+       project_path: project_path,
+       model: model,
+       force?: force?,
+       help?: false,
+       embeddings_module: HexdocsMcp.Config.embeddings_module()
+     }}
+  end
+
+  defp create_context(false, package, version, _project_path, model, force?) when not is_nil(package) do
+    {:ok,
+     %Context{
+       package: package,
+       version: version || "latest",
+       model: model,
+       force?: force?,
+       help?: false,
+       embeddings_module: HexdocsMcp.Config.embeddings_module()
+     }}
+  end
+
+  defp create_context(false, nil, _version, nil, _model, _force?) do
+    {:error, "Invalid arguments: must specify either PACKAGE or --project PATH"}
   end
 
   defp get_project_path(explicit_path, _package) when not is_nil(explicit_path), do: explicit_path

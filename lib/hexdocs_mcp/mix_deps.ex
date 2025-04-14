@@ -11,7 +11,7 @@ defmodule HexdocsMcp.MixDeps do
   Evaluates the project/0 function in a sandboxed environment.
   """
   def read_deps(mix_file_path) do
-    unless File.exists?(mix_file_path) do
+    if !File.exists?(mix_file_path) do
       raise "Mix file not found: #{mix_file_path}"
     end
 
@@ -47,7 +47,8 @@ defmodule HexdocsMcp.MixDeps do
       project_func_ast = find_project_function_ast(module_body)
       project_body = extract_project_body(project_func_ast)
 
-      eval_project_body(module_name, module_body, project_body, project_func_ast, file_path)
+      module_name
+      |> eval_project_body(module_body, project_body, project_func_ast, file_path)
       |> process_project_config(module_body, file_path)
     catch
       {:error, :no_project_function} ->
@@ -57,8 +58,7 @@ defmodule HexdocsMcp.MixDeps do
 
   defp extract_deps_from_ast(_, _file_path), do: {:error, "Invalid module structure"}
 
-  defp process_project_config({:ok, project_config}, module_body, file_path)
-       when is_list(project_config) do
+  defp process_project_config({:ok, project_config}, module_body, file_path) when is_list(project_config) do
     case Keyword.get(project_config, :deps) do
       nil ->
         {:ok, []}
@@ -176,7 +176,7 @@ defmodule HexdocsMcp.MixDeps do
           {:error, "Not a keyword list"}
         end
 
-      list = [_ | _] ->
+      [_ | _] = list ->
         try do
           {:ok, list}
         rescue
@@ -241,8 +241,8 @@ defmodule HexdocsMcp.MixDeps do
 
   defp normalize_version(version) do
     cond do
-      String.starts_with?(version, ">=") -> String.replace(version, ">=", "") |> String.trim()
-      String.starts_with?(version, ">") -> String.replace(version, ">", "") |> String.trim()
+      String.starts_with?(version, ">=") -> version |> String.replace(">=", "") |> String.trim()
+      String.starts_with?(version, ">") -> version |> String.replace(">", "") |> String.trim()
       String.starts_with?(version, "~>") -> String.trim(version)
       true -> version
     end
