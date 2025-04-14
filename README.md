@@ -5,6 +5,10 @@ HexDocs MCP is a project that provides semantic search capabilities for Hex pack
 1. An Elixir binary that downloads, processes, and generates embeddings from Hex package documentation
 2. A TypeScript server implementing the Model Context Protocol (MCP) that calls the Elixir binary to fetch and search documentation
 
+> [!CAUTION]
+> **This documentation reflects the current development state on the main branch.**
+> For documentation on the latest stable release, please see the [latest release page](https://github.com/bradleygolden/hexdocs-mcp/releases/latest) and the [latest release branch](https://github.com/bradleygolden/hexdocs-mcp/tree/v0.2.0).
+
 ## Installation
 
 ### MCP Client Configuration
