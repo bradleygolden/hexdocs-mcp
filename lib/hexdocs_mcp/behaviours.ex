@@ -38,5 +38,6 @@ defmodule HexdocsMcp.Behaviours.Ollama do
 end
 
 defmodule HexdocsMcp.Behaviours.MixDeps do
+  @moduledoc false
   @callback read_deps(String.t()) :: [{String.t(), String.t() | nil}]
 end
