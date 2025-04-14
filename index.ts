@@ -336,48 +336,62 @@ async function handleFetch(args: {
     }
 }
 
-// Create MCP server
-console.error("Initializing MCP server...");
-const server = new McpServer({
-    name: "HexdocsMCP",
-    version: "0.2.0-rc.1",
-    description: "MCP server for searching Elixir Hex package documentation using embeddings"
-});
+const args = process.argv.slice(2);
+const isCheckBinary = args.includes('--check-binary');
 
-// Register tools
-server.tool(
-    "search",
-    {
-        query: z.string().describe("The semantic search query to find relevant documentation (can be natural language, not just keywords)"),
-        packageName: z.string().describe("The Hex package name to search within (must be a package that has been fetched)"),
-        version: z.string().optional().describe("Optional specific package version to search within, defaults to latest fetched version"),
-        limit: z.number().optional().default(5).describe("Maximum number of results to return (default: 5, increase for more comprehensive results)")
-    },
-    handleSearch
-);
-
-server.tool(
-    "fetch",
-    {
-        packageName: z.string().describe("The Hex package name to fetch (required)"),
-        version: z.string().optional().describe("Optional package version, defaults to latest"),
-        force: z.boolean().optional().default(false).describe("Force re-fetch even if embeddings already exist")
-    },
-    handleFetch
-);
-
-// Start the server with reconnection handling
-console.error("Starting server...");
-const transport = new StdioServerTransport();
-
-async function connectWithRetry(transport: StdioServerTransport) {
-    try {
-        await server.connect(transport);
-        console.error("Connected to transport");
-    } catch (error) {
-        console.error(`Connection error: ${error instanceof Error ? error.message : 'Unknown error'}, retrying in 5s...`);
-        setTimeout(() => connectWithRetry(transport), 5000);
+async function main() {
+    if (isCheckBinary) {
+        console.error("Checking binary...");
+        const binaryPath = await getBinaryPath();
+        console.error(`Binary available at: ${binaryPath}`);
+        console.error("Binary check complete.");
+        return;
     }
+
+    console.error("Initializing MCP server...");
+    const server = new McpServer({
+        name: "HexdocsMCP",
+        version: "0.2.0",
+        description: "MCP server for searching Elixir Hex package documentation using embeddings"
+    });
+
+    // Register tools
+    server.tool(
+        "search",
+        {
+            query: z.string().describe("The semantic search query to find relevant documentation (can be natural language, not just keywords)"),
+            packageName: z.string().describe("The Hex package name to search within (must be a package that has been fetched)"),
+            version: z.string().optional().describe("Optional specific package version to search within, defaults to latest fetched version"),
+            limit: z.number().optional().default(5).describe("Maximum number of results to return (default: 5, increase for more comprehensive results)")
+        },
+        handleSearch
+    );
+
+    server.tool(
+        "fetch",
+        {
+            packageName: z.string().describe("The Hex package name to fetch (required)"),
+            version: z.string().optional().describe("Optional package version, defaults to latest"),
+            force: z.boolean().optional().default(false).describe("Force re-fetch even if embeddings already exist")
+        },
+        handleFetch
+    );
+
+    // Start the server with reconnection handling
+    console.error("Starting server...");
+    const transport = new StdioServerTransport();
+
+    async function connectWithRetry(transport: StdioServerTransport) {
+        try {
+            await server.connect(transport);
+            console.error("Connected to transport");
+        } catch (error) {
+            console.error(`Connection error: ${error instanceof Error ? error.message : 'Unknown error'}, retrying in 5s...`);
+            setTimeout(() => connectWithRetry(transport), 5000);
+        }
+    }
+
+    connectWithRetry(transport);
 }
 
-connectWithRetry(transport);
+main();
