@@ -60,3 +60,5 @@ burrito_out/
 bin/
 
 *.dylib
+
+.roo/
