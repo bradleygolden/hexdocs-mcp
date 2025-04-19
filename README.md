@@ -7,7 +7,7 @@ HexDocs MCP is a project that provides semantic search capabilities for Hex pack
 
 > [!CAUTION]
 > **This documentation reflects the current development state on the main branch.**
-> For documentation on the latest stable release, please see the [latest release page](https://github.com/bradleygolden/hexdocs-mcp/releases/latest) and the [latest release branch](https://github.com/bradleygolden/hexdocs-mcp/tree/v0.2.0).
+> For documentation on the latest stable release, please see the [latest release page](https://github.com/bradleygolden/hexdocs-mcp/releases/latest) and the [latest release branch](https://github.com/bradleygolden/hexdocs-mcp/tree/v0.3.0).
 
 ## Installation
 
@@ -24,7 +24,7 @@ Add this to your client's MCP json config:
       "command": "npx",
       "args": [
         "-y",
-        "hexdocs-mcp@0.2.0"
+        "hexdocs-mcp@0.3.0"
       ]
     }
   }
@@ -48,7 +48,7 @@ npx -y @smithery/cli@latest install @bradleygolden/hexdocs-mcp --client cursor
 Alternatively, you can add the hexdocs_mcp package to your project if you don't want to use the MCP server.
 
 ```elixir
-{:hexdocs_mcp, "~> 0.2.0", only: :dev, runtime: false}
+{:hexdocs_mcp, "~> 0.3.0", only: :dev, runtime: false}
 ```
 
 And if you use floki or any other dependencies that are marked as only available in
