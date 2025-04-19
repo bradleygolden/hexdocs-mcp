@@ -38,6 +38,8 @@ That's it! The MCP server will now automatically handle downloading and using th
 
 ## [Unreleased]
 
+## [0.3.0]
+
 ### Added
 - Added Styler formatter plugin for consistent code style enforcement
 - Added Credo static code analyzer for code quality enforcement
@@ -115,7 +117,8 @@ Initial release of HexDocs MCP, providing semantic search capabilities for Hex p
   - Default model: `nomic-embed-text`
   - Support for alternative models like `all-minilm`
 
-[Unreleased]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/bradleygolden/hexdocs-mcp/releases/tag/v0.1.2
 [0.1.1]: https://github.com/bradleygolden/hexdocs-mcp/releases/tag/v0.1.1
