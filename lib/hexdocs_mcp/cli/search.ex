@@ -7,12 +7,12 @@ defmodule HexdocsMcp.CLI.Search do
   alias HexdocsMcp.CLI.Utils
 
   @usage """
-  Usage: [SYSTEM_COMMAND] search PACKAGE [VERSION] [options]
+  Usage: [SYSTEM_COMMAND] search [PACKAGE] [VERSION] [options]
 
   Searches in package documentation using semantic embeddings.
 
   Arguments:
-    PACKAGE    - Hex package name to search in (required)
+    PACKAGE    - Hex package name to search in (optional, searches all packages if not provided)
     VERSION    - Package version (optional, defaults to latest)
 
   Options:
@@ -22,12 +22,13 @@ defmodule HexdocsMcp.CLI.Search do
     --help, -h       - Show this help
 
   Process:
-    1. Looks up existing embeddings for the package
+    1. Looks up existing embeddings for the package(s)
     2. Performs semantic search using the query
     3. Returns the most relevant results
 
   Examples:
-    [SYSTEM_COMMAND] search phoenix --query "how to create channels" # Search all packages
+    [SYSTEM_COMMAND] search --query "how to create channels" # Search all packages
+    [SYSTEM_COMMAND] search phoenix --query "how to create channels" # Search specific package
     [SYSTEM_COMMAND] search phoenix 1.7.0 --query "configuration options" # Search specific version
     [SYSTEM_COMMAND] search phoenix --query "configuration options" --model all-minilm # Use custom model
     [SYSTEM_COMMAND] search phoenix --query "configuration options" --limit 10 # Return more results
@@ -35,7 +36,7 @@ defmodule HexdocsMcp.CLI.Search do
 
   defmodule Context do
     @moduledoc false
-    @enforce_keys [:query, :package, :version, :model, :help?]
+    @enforce_keys [:query, :model, :help?]
     defstruct query: nil,
               package: nil,
               version: nil,
@@ -62,7 +63,8 @@ defmodule HexdocsMcp.CLI.Search do
     %Context{query: query, package: package, version: version, model: model, limit: limit} =
       context
 
-    Utils.output_info("Searching for \"#{query}\" in #{package} #{version || "latest"}...")
+    package_info = if package, do: "#{package} #{version || "latest"}", else: "all packages"
+    Utils.output_info("Searching for \"#{query}\" in #{package_info}...")
 
     progress_callback = create_search_progress_callback()
     results = perform_search(query, package, version, model, limit, progress_callback)
@@ -105,12 +107,22 @@ defmodule HexdocsMcp.CLI.Search do
   end
 
   defp display_search_results([], package, version) do
-    cmd = "[SYSTEM_COMMAND] fetch #{package} #{version}"
-    cmd = String.replace(cmd, "[SYSTEM_COMMAND]", HexdocsMcp.Config.system_command())
+    fetch_cmd =
+      if package do
+        cmd = "[SYSTEM_COMMAND] fetch #{package} #{version}"
+        cmd = String.replace(cmd, "[SYSTEM_COMMAND]", HexdocsMcp.Config.system_command())
+        "\n  #{cmd}"
+      else
+        ""
+      end
 
     Utils.output_info("No results found.")
-    Utils.output_info("Make sure you've generated embeddings for this package first by running:")
-    Utils.output_info("  #{cmd}")
+
+    if package do
+      Utils.output_info("Make sure you've generated embeddings for this package first by running:#{fetch_cmd}")
+    else
+      Utils.output_info("Try searching for a specific package or generate embeddings for packages first.")
+    end
   end
 
   defp display_search_results(results, _package, _version) do

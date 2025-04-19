@@ -306,9 +306,16 @@ defmodule HexdocsMcp.Embeddings do
 
     query =
       from e in Embedding,
-        where: e.package == ^package and e.version == ^version,
         select: count(e.id),
         limit: 1
+
+    query =
+      if package do
+        from e in query,
+          where: e.package == ^package and e.version == ^version
+      else
+        query
+      end
 
     Repo.one(query) > 0
   end
@@ -328,10 +335,16 @@ defmodule HexdocsMcp.Embeddings do
     version = version || "latest"
 
     query =
-      from e in Embedding,
-        where: e.package == ^package and e.version == ^version
+      if package do
+        from e in Embedding,
+          where: e.package == ^package and e.version == ^version
+      end
 
-    {count, _} = Repo.delete_all(query)
-    {:ok, count}
+    if query do
+      {count, _} = Repo.delete_all(query)
+      {:ok, count}
+    else
+      {:ok, 0}
+    end
   end
 end

@@ -222,6 +222,23 @@ defmodule HexdocsMcp.EmbeddingsTest do
       # Check with nil version (should convert to "latest")
       assert Embeddings.embeddings_exist?(package, nil) == true
     end
+
+    test "returns true with nil package if any embeddings exist" do
+      # Create an embedding with a different package
+      test_package = "existence_test_package"
+      create_test_embedding(test_package, @default_version)
+
+      # Check with nil package (should check if any embeddings exist)
+      assert Embeddings.embeddings_exist?(nil, @default_version) == true
+    end
+
+    test "returns false with nil package if no embeddings exist" do
+      # Ensure no embeddings exist
+      Repo.delete_all(Embedding)
+
+      # Check with nil package
+      assert Embeddings.embeddings_exist?(nil, @default_version) == false
+    end
   end
 
   describe "delete_embeddings/2" do
@@ -278,6 +295,23 @@ defmodule HexdocsMcp.EmbeddingsTest do
       # Original embedding should still exist
       other_query = from e in Embedding, where: e.package == ^package and e.version == "1.2.3"
       assert Repo.aggregate(other_query, :count, :id) == 1
+    end
+
+    test "does not delete any embeddings when package is nil" do
+      # Create multiple embeddings in different packages
+      package1 = "test_package1"
+      package2 = "test_package2"
+      create_test_embedding(package1, @default_version)
+      create_test_embedding(package2, @default_version)
+
+      # Try to delete with nil package
+      {:ok, count} = Embeddings.delete_embeddings(nil, @default_version)
+
+      # Verify that no embeddings were deleted (safety feature)
+      assert count == 0
+
+      # Verify that all embeddings still exist
+      assert Repo.aggregate(Embedding, :count) == 2
     end
   end
 
@@ -383,6 +417,39 @@ defmodule HexdocsMcp.EmbeddingsTest do
       results = Embeddings.search("no matches", package, @default_version, @default_model)
 
       assert Enum.empty?(results)
+    end
+
+    test "searches across all packages when package is nil", %{test_package: existing_package} do
+      # First, ensure we have embeddings for the main test package
+      assert Embeddings.embeddings_exist?(existing_package, @default_version)
+
+      # Now create a second package with embeddings
+      other_package = "search_across_test"
+      create_test_embedding(other_package, @default_version)
+
+      # Verify both packages have embeddings
+      assert Embeddings.embeddings_exist?(existing_package, @default_version)
+      assert Embeddings.embeddings_exist?(other_package, @default_version)
+
+      setup_search_mock()
+      query = "Test search query"
+
+      # Search with nil package to get results from all packages
+      results = Embeddings.search(query, nil, @default_version, @default_model)
+
+      # We should get results since embeddings exist
+      assert length(results) > 0
+
+      # Get the packages in the results
+      found_packages =
+        results
+        |> Enum.map(& &1.metadata.package)
+        |> Enum.uniq()
+        |> MapSet.new()
+
+      # We should find at least one of our packages
+      # (Implementation details may affect which packages are returned in results)
+      assert found_packages != MapSet.new()
     end
   end
 

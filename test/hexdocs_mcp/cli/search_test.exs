@@ -54,6 +54,29 @@ defmodule HexdocsMcp.CLI.SearchTest do
     assert output =~ "Text:"
   end
 
+  test "searching across all packages (no package specified)" do
+    query = "how to configure channels"
+    package = package()
+    version = "latest"
+
+    capture_io(fn ->
+      assert :ok = Fetch.main([package])
+    end)
+
+    output =
+      capture_io(fn ->
+        results = Search.main(["--query", query])
+        # Results should come from all packages, but in this test we only have one package
+        assert_valid_search_results(results, package, version)
+      end)
+
+    assert output =~ "Searching for \"#{query}\" in all packages"
+    assert output =~ "Found"
+    assert output =~ "Result (score:"
+    assert output =~ "File:"
+    assert output =~ "Text:"
+  end
+
   test "searching with custom model", %{package: package, version: version} do
     query = "how to handle authentication"
     custom_model = "all-minilm"
@@ -94,20 +117,41 @@ defmodule HexdocsMcp.CLI.SearchTest do
     assert output =~ "#{system_command} fetch #{package} #{version}"
   end
 
+  test "searching when no embeddings exist and no package specified" do
+    query = "how to configure websockets"
+
+    # Ensure no embeddings exist
+    Repo.delete_all(HexdocsMcp.Embeddings.Embedding)
+
+    output =
+      capture_io(fn ->
+        results = Search.main(["--query", query])
+        assert results == []
+      end)
+
+    # Verify the output contains appropriate message for all-package search
+    assert output =~ "No results found"
+    assert output =~ "Try searching for a specific package or generate embeddings for packages first"
+    # This should only appear when a package is specified
+    refute output =~ "Make sure you've generated embeddings"
+  end
+
   test "searching with help flag", %{system_command: system_command} do
     output =
       capture_io(fn ->
         Search.main(["--help"])
       end)
 
-    assert output =~ "Usage: #{system_command} search PACKAGE [VERSION]"
+    assert output =~ "Usage: #{system_command} search [PACKAGE] [VERSION]"
     assert output =~ "Arguments:"
-    assert output =~ "PACKAGE"
+    assert output =~ "PACKAGE    - Hex package name to search in (optional"
     assert output =~ "VERSION"
     assert output =~ "Options:"
     assert output =~ "--query"
     assert output =~ "--model"
     assert output =~ "Examples:"
+    # Test the new example for searching all packages
+    assert output =~ "search --query"
   end
 
   test "searching with invalid arguments" do

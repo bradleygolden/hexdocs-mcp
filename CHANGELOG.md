@@ -45,6 +45,9 @@ That's it! The MCP server will now automatically handle downloading and using th
   - Allows setting multiple comma-separated paths to mix.exs files
   - First valid path is used when fetching package documentation
   - Simplifies workflow by not having to specify project path for every command
+- Made package name optional for search command allowing search across all packages
+  - In CLI: `hexdocs_mcp search --query "your query"` now searches across all indexed packages
+  - In MCP server: `packageName` parameter is now optional in the search tool
 
 ### Changed
 - Updated code to comply with Credo rules

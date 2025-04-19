@@ -26,8 +26,8 @@ defmodule HexdocsMcp.Behaviours.Embeddings do
             ) ::
               {:ok, term()}
 
-  @callback embeddings_exist?(package :: String.t(), version :: String.t() | nil) :: boolean()
-  @callback delete_embeddings(package :: String.t(), version :: String.t() | nil) ::
+  @callback embeddings_exist?(package :: String.t() | nil, version :: String.t() | nil) :: boolean()
+  @callback delete_embeddings(package :: String.t() | nil, version :: String.t() | nil) ::
               {:ok, non_neg_integer()}
 end
 

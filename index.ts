@@ -287,12 +287,16 @@ async function verifyChecksum(filePath: string, checksumFile: string): Promise<b
 // Command handlers
 async function handleSearch(args: {
     query: string;
-    packageName: string;
+    packageName?: string;
     version?: string;
     limit?: number;
 }) {
     const binaryPath = await getBinaryPath();
-    const cliArgs = ['search', args.packageName];
+    const cliArgs = ['search'];
+
+    if (args.packageName) {
+        cliArgs.push(args.packageName);
+    }
 
     if (args.version) {
         cliArgs.push(args.version);
@@ -360,7 +364,7 @@ async function main() {
         "search",
         {
             query: z.string().describe("The semantic search query to find relevant documentation (can be natural language, not just keywords)"),
-            packageName: z.string().describe("The Hex package name to search within (must be a package that has been fetched)"),
+            packageName: z.string().optional().describe("Optional Hex package name to search within (must be a package that has been fetched)"),
             version: z.string().optional().describe("Optional specific package version to search within, defaults to latest fetched version"),
             limit: z.number().optional().default(5).describe("Maximum number of results to return (default: 5, increase for more comprehensive results)")
         },
