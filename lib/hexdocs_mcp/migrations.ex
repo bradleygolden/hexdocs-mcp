@@ -28,13 +28,15 @@ defmodule HexdocsMcp.Migrations do
         end_byte INTEGER,
         text_snippet TEXT,
         text TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
         embedding FLOAT[384] NOT NULL,
         inserted_at TIMESTAMP,
         updated_at TIMESTAMP,
         UNIQUE(package, version, source_file, text_snippet)
       )#{create_opts};
       """,
-      "CREATE INDEX IF NOT EXISTS idx_embeddings_package_version ON embeddings(package, version)#{create_opts};"
+      "CREATE INDEX IF NOT EXISTS idx_embeddings_package_version ON embeddings(package, version)#{create_opts};",
+      "CREATE INDEX IF NOT EXISTS idx_embeddings_content_hash ON embeddings(package, version, content_hash)#{create_opts};"
     ]
   end
 

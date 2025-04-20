@@ -38,6 +38,14 @@ That's it! The MCP server will now automatically handle downloading and using th
 
 ## [Unreleased]
 
+### Added
+- Added content hashing for incremental embedding refresh
+  - Automatically reuses existing embeddings for unchanged documentation chunks
+  - Only generates new embeddings for modified chunks
+  - Significantly improves performance for packages with minor documentation changes
+  - Maintains embedding consistency while reducing computational cost
+  - Hash generation uses SHA-256 for reliable content identification
+
 ## [0.3.0]
 
 ### Added

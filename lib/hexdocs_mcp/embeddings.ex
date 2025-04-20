@@ -22,6 +22,16 @@ defmodule HexdocsMcp.Embeddings do
   @snippet_length 100
 
   @doc """
+  Generates a SHA-256 hash for the given text content.
+
+  Returns a lowercase hex-encoded string representation of the hash.
+  """
+  @spec content_hash(String.t()) :: String.t()
+  def content_hash(text) when is_binary(text) do
+    :sha256 |> :crypto.hash(text) |> Base.encode16(case: :lower)
+  end
+
+  @doc """
   Generate embeddings for all chunks in a package and store them in SQLite.
 
   ## Parameters
@@ -36,6 +46,7 @@ defmodule HexdocsMcp.Embeddings do
   @impl Embeddings
   def generate(package, version, model, opts \\ []) do
     progress_callback = opts[:progress_callback]
+    force? = opts[:force] || false
 
     data_path = HexdocsMcp.Config.data_path()
     chunks_dir = Path.join([data_path, package, "chunks"])
@@ -51,67 +62,120 @@ defmodule HexdocsMcp.Embeddings do
       |> Stream.chunk_every(@batch_size)
       |> Stream.with_index()
       |> Enum.reduce(
-        {0, [], 0},
-        fn {batch, _idx}, {count, changesets, processed} ->
+        {0, [], 0, 0},
+        fn {batch, _idx}, {count, changesets, processed, reused} ->
           process_batch(
             batch,
-            {count, changesets, processed},
+            {count, changesets, processed, reused},
             client,
             model,
             total_chunks,
-            progress_callback
+            progress_callback,
+            force?
           )
         end
       )
-      |> then(fn {count, changesets, processed} ->
+      |> then(fn {count, changesets, processed, reused} ->
         updated_changesets =
           Enum.map(changesets, fn changeset ->
             Ecto.Changeset.put_change(changeset, :version, default_version)
           end)
 
-        {count, updated_changesets, processed}
+        {count, updated_changesets, processed, reused}
       end)
 
-    {count, updated_changesets, _} = result
-    persist_changesets(updated_changesets, count, progress_callback)
+    {count, changesets, _, reused} = result
+    persist_changesets(changesets, count, reused, progress_callback)
   end
 
-  defp process_batch(batch, {count, changesets, processed}, client, model, total, callback) do
+  defp process_batch(batch, {count, changesets, processed, reused}, client, model, total, callback, force?) do
     batch_results =
       batch
       |> Task.async_stream(
-        &process_chunk_file(&1, client, model),
+        &process_chunk_file(&1, client, model, force?),
         max_concurrency: @max_concurrency,
         timeout: @timeout
       )
       |> Enum.to_list()
 
-    {new_changesets, new_count} = extract_successful_changesets(batch_results)
+    {new_changesets, new_count, reused_count} = extract_successful_changesets(batch_results)
     new_processed = processed + length(batch)
 
     if callback, do: callback.(new_processed, total, :processing)
 
-    {count + new_count, changesets ++ new_changesets, new_processed}
+    {count + new_count, changesets ++ new_changesets, new_processed, reused + reused_count}
   end
 
-  defp process_chunk_file(chunk_file, client, model) do
+  defp process_chunk_file(chunk_file, client, model, force?) do
     with {:ok, chunk_json} <- File.read(chunk_file),
-         {:ok, chunk_data} <- Jason.decode(chunk_json),
-         text = chunk_data["text"],
-         metadata = chunk_data["metadata"],
-         {:ok, response} <- Ollama.embed(client, model: model, input: text) do
-      embedding = extract_embedding(response, chunk_file)
+         {:ok, chunk_data} <- Jason.decode(chunk_json) do
+      text = chunk_data["text"]
+      metadata = chunk_data["metadata"]
+      content_hash = metadata["content_hash"]
 
-      if embedding do
-        {:ok, create_embedding_changeset(text, metadata, embedding)}
+      version = metadata["version"] || "latest"
+      package = metadata["package"]
+
+      if force? do
+        generate_new_embedding(text, metadata, content_hash, client, model, chunk_file)
       else
-        {:error, :no_embedding}
+        existing_embedding = find_existing_embedding(package, version, content_hash)
+
+        if existing_embedding do
+          {:ok, :reused, update_existing_embedding_changeset(existing_embedding, metadata)}
+        else
+          generate_new_embedding(text, metadata, content_hash, client, model, chunk_file)
+        end
       end
     else
       error ->
         Logger.error("Error processing #{chunk_file}: #{inspect(error)}")
         {:error, error}
     end
+  end
+
+  defp generate_new_embedding(text, metadata, content_hash, client, model, chunk_file) do
+    case Ollama.embed(client, model: model, input: text) do
+      {:ok, response} ->
+        embedding = extract_embedding(response, chunk_file)
+
+        if embedding do
+          {:ok, :new, create_embedding_changeset(text, metadata, embedding, content_hash)}
+        else
+          {:error, :no_embedding}
+        end
+
+      error ->
+        Logger.error("Error processing #{chunk_file}: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
+  defp find_existing_embedding(package, version, content_hash) do
+    if is_nil(package) or is_nil(version) or is_nil(content_hash) do
+      nil
+    else
+      query =
+        from e in Embedding,
+          where:
+            e.package == ^package and
+              e.version == ^version and
+              e.content_hash == ^content_hash,
+          limit: 1
+
+      Repo.one(query)
+    end
+  end
+
+  defp update_existing_embedding_changeset(embedding, metadata) do
+    changes = %{
+      source_file: metadata["source_file"],
+      source_type: metadata["source_type"],
+      start_byte: metadata["start_byte"],
+      end_byte: metadata["end_byte"]
+    }
+
+    Embedding.changeset(embedding, changes)
   end
 
   defp extract_embedding(response, chunk_file) do
@@ -129,7 +193,7 @@ defmodule HexdocsMcp.Embeddings do
     end
   end
 
-  defp create_embedding_changeset(text, metadata, embedding) do
+  defp create_embedding_changeset(text, metadata, embedding, content_hash) do
     text_snippet =
       if String.length(text) > @snippet_length,
         do: String.slice(text, 0, @snippet_length) <> "...",
@@ -144,26 +208,32 @@ defmodule HexdocsMcp.Embeddings do
       end_byte: metadata["end_byte"],
       text_snippet: text_snippet,
       text: text,
+      content_hash: content_hash,
       embedding: SqliteVec.Float32.new(embedding)
     })
   end
 
   defp extract_successful_changesets(batch_results) do
-    Enum.reduce(batch_results, {[], 0}, fn
-      {:ok, {:ok, changeset}}, {acc_changesets, acc_count} ->
-        {[changeset | acc_changesets], acc_count + 1}
+    Enum.reduce(batch_results, {[], 0, 0}, fn
+      {:ok, {:ok, :new, changeset}}, {acc_changesets, new_count, reused_count} ->
+        {[changeset | acc_changesets], new_count + 1, reused_count}
+
+      {:ok, {:ok, :reused, changeset}}, {acc_changesets, new_count, reused_count} ->
+        {[changeset | acc_changesets], new_count, reused_count + 1}
 
       _, acc ->
         acc
     end)
   end
 
-  defp persist_changesets(changesets, count, callback) do
+  defp persist_changesets(changesets, _count, reused, callback) do
     if Enum.empty?(changesets) do
-      {:ok, count}
+      {:ok, {0, 0, 0}}
     else
       do_persist_changesets(changesets, callback)
-      {:ok, count}
+      # Return the total number of chunks as the first value to match test expectations
+      total = length(changesets)
+      {:ok, {total, total - reused, reused}}
     end
   end
 

@@ -252,19 +252,16 @@ defmodule HexdocsMcp.CLI.Fetch do
 
     Utils.output_info("Generating embeddings using #{model}...")
 
-    {:ok, embed_count} =
-      HexdocsMcp.generate_embeddings(
-        package,
-        version,
-        model,
-        progress_callback: create_embedding_progress_callback()
-      )
+    progress_callback = create_embedding_progress_callback()
+
+    {:ok, {total_count, new_count, reused_count}} =
+      HexdocsMcp.Embeddings.generate(package, version, model, progress_callback: progress_callback, force: context.force?)
 
     Utils.output_info("#{Utils.check()} Processing completed:")
     Utils.output_info("  • Docs location: #{docs_path}")
     Utils.output_info("  • Markdown file: #{output_file}")
     Utils.output_info("  • Created #{chunk_count} chunks in: #{chunks_dir}")
-    Utils.output_info("  • Generated #{embed_count} embeddings")
+    Utils.output_info("  • Generated #{total_count} embeddings (#{new_count} new, #{reused_count} reused)")
 
     Process.delete(:processing_progress_fn)
     Process.delete(:saving_progress_fn)
@@ -470,13 +467,16 @@ defmodule HexdocsMcp.CLI.Fetch do
     if String.length(chunk.text) < 50 do
       nil
     else
+      content_hash = HexdocsMcp.Embeddings.content_hash(chunk.text)
+
       chunk_filename = "#{clean_path}_chunk_#{chunk_idx}.json"
       chunk_path = Path.join(output_dir, chunk_filename)
 
       extended_metadata =
         Map.merge(metadata, %{
           start_byte: chunk.start_byte,
-          end_byte: chunk.end_byte
+          end_byte: chunk.end_byte,
+          content_hash: content_hash
         })
 
       chunk_data = %{

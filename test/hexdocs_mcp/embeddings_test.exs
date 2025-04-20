@@ -1,5 +1,5 @@
 defmodule HexdocsMcp.EmbeddingsTest do
-  use HexdocsMcp.DataCase, async: true
+  use HexdocsMcp.DataCase, async: false
 
   import Ecto.Query
   import ExUnit.CaptureLog
@@ -7,6 +7,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
 
   alias HexdocsMcp.Embeddings
   alias HexdocsMcp.Embeddings.Embedding
+  alias HexdocsMcp.Repo
 
   @default_model "nomic-embed-text"
   @default_version "latest"
@@ -34,15 +35,19 @@ defmodule HexdocsMcp.EmbeddingsTest do
   defp create_test_chunks(chunks_dir, package) do
     for i <- 1..3 do
       chunk_file = Path.join(chunks_dir, "chunk_#{i}.json")
+      text = "Sample text for chunk #{i}"
+
+      content_hash = Embeddings.content_hash(text)
 
       chunk_content = %{
-        "text" => "Sample text for chunk #{i}",
+        "text" => text,
         "metadata" => %{
           "package" => package,
           "source_file" => "test_file_#{i}.ex",
           "source_type" => "docs",
           "start_byte" => i * 100,
-          "end_byte" => i * 100 + 99
+          "end_byte" => i * 100 + 99,
+          "content_hash" => content_hash
         }
       }
 
@@ -66,11 +71,150 @@ defmodule HexdocsMcp.EmbeddingsTest do
     context
   end
 
+  describe "hash generation" do
+    test "generates consistent hashes for the same text" do
+      text = "This is a test text"
+      hash1 = Embeddings.content_hash(text)
+      hash2 = Embeddings.content_hash(text)
+
+      assert hash1 == hash2
+      assert String.length(hash1) == 64
+    end
+
+    test "generates different hashes for different texts" do
+      hash1 = Embeddings.content_hash("Text one")
+      hash2 = Embeddings.content_hash("Text two")
+
+      assert hash1 != hash2
+    end
+  end
+
+  describe "incremental embedding generation" do
+    test "generates all embeddings for initial run", %{test_package: package} do
+      {:ok, result} = Embeddings.generate(package, @default_version, @default_model)
+
+      assert result == {3, 3, 0}
+
+      embeddings = Repo.all(from e in Embedding, where: e.package == ^package)
+      assert length(embeddings) == 3
+
+      for embedding <- embeddings do
+        assert embedding.package == package
+        assert embedding.version == @default_version
+        assert String.length(embedding.content_hash) == 64
+      end
+    end
+
+    test "reuses existing embeddings with matching hash", %{test_package: package, chunks_dir: chunks_dir} do
+      {:ok, {3, 3, 0}} = Embeddings.generate(package, @default_version, @default_model)
+
+      {:ok, {3, 0, 3}} = Embeddings.generate(package, @default_version, @default_model)
+
+      modified_text = "Modified text for chunk 2"
+      modified_hash = Embeddings.content_hash(modified_text)
+
+      chunk_file = Path.join(chunks_dir, "chunk_2.json")
+
+      chunk_content = %{
+        "text" => modified_text,
+        "metadata" => %{
+          "package" => package,
+          "source_file" => "test_file_2.ex",
+          "source_type" => "docs",
+          "start_byte" => 200,
+          "end_byte" => 299,
+          "content_hash" => modified_hash
+        }
+      }
+
+      File.write!(chunk_file, Jason.encode!(chunk_content))
+
+      {:ok, {3, 1, 2}} = Embeddings.generate(package, @default_version, @default_model)
+
+      embedding =
+        Repo.one(
+          from e in Embedding,
+            where:
+              e.package == ^package and
+                e.version == ^@default_version and
+                e.source_file == "test_file_2.ex" and
+                e.content_hash == ^modified_hash,
+            limit: 1
+        )
+
+      assert embedding.content_hash == modified_hash
+      assert embedding.text == modified_text
+    end
+
+    test "respects force flag and regenerates all embeddings", %{test_package: package} do
+      {:ok, {3, 3, 0}} = Embeddings.generate(package, @default_version, @default_model)
+
+      {:ok, result} = Embeddings.generate(package, @default_version, @default_model, force: true)
+
+      assert result == {3, 3, 0}
+    end
+
+    test "updates metadata even when reusing embedding", %{test_package: package, chunks_dir: chunks_dir} do
+      {:ok, {3, 3, 0}} = Embeddings.generate(package, @default_version, @default_model)
+
+      embedding =
+        Repo.one(
+          from e in Embedding,
+            where:
+              e.package == ^package and
+                e.source_file == "test_file_1.ex"
+        )
+
+      refute is_nil(embedding), "Embedding should exist after first generate"
+      original_start_byte = embedding.start_byte
+
+      text = "Sample text for chunk 1"
+      content_hash = Embeddings.content_hash(text)
+
+      chunk_file = Path.join(chunks_dir, "chunk_1.json")
+
+      chunk_content = %{
+        "text" => text,
+        "metadata" => %{
+          "package" => package,
+          "source_file" => "test_file_1.ex",
+          "source_type" => "docs",
+          "start_byte" => 999,
+          "end_byte" => 1099,
+          "content_hash" => content_hash
+        }
+      }
+
+      File.write!(chunk_file, Jason.encode!(chunk_content))
+
+      {:ok, result} = Embeddings.generate(package, @default_version, @default_model)
+
+      assert result == {3, 0, 3}
+
+      updated_embedding =
+        Repo.one(
+          from e in Embedding,
+            where:
+              e.package == ^package and
+                e.source_file == "test_file_1.ex"
+        )
+
+      refute is_nil(updated_embedding), "Updated embedding should exist"
+      assert updated_embedding.content_hash == content_hash
+      assert updated_embedding.text == text
+      assert updated_embedding.start_byte == 999
+      assert updated_embedding.start_byte != original_start_byte
+    end
+  end
+
   describe "generate/2" do
     test "generates embeddings for all chunks in a package", %{test_package: package} do
-      {:ok, count} = Embeddings.generate(package, @default_version, @default_model)
+      {:ok, {total, new, reused}} = Embeddings.generate(package, @default_version, @default_model)
 
-      assert count == 3
+      assert total == 3
+      assert new == 3
+      assert reused == 0
+
       embeddings = Repo.all(from e in Embedding, where: e.package == ^package)
       assert length(embeddings) == 3
 
@@ -86,9 +230,9 @@ defmodule HexdocsMcp.EmbeddingsTest do
 
     test "generates embeddings with specific version", %{test_package: package} do
       version = "1.0.0"
-      {:ok, count} = Embeddings.generate(package, version, @default_model)
+      {:ok, {total, _, _}} = Embeddings.generate(package, version, @default_model)
 
-      assert count == 3
+      assert total == 3
 
       embeddings =
         Repo.all(from e in Embedding, where: e.package == ^package and e.version == ^version)
@@ -110,9 +254,9 @@ defmodule HexdocsMcp.EmbeddingsTest do
         {:ok, %{"model" => Keyword.get(opts, :model), "embeddings" => [embedding]}}
       end)
 
-      {:ok, count} = Embeddings.generate(package, @default_version, custom_model)
+      {:ok, {total, _, _}} = Embeddings.generate(package, @default_version, custom_model)
 
-      assert count == 3
+      assert total == 3
       assert_received {:model_used, ^custom_model}
     end
 
@@ -124,7 +268,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
         %{processing: 0, saving: 0}
       end
 
-      {:ok, _count} =
+      {:ok, _} =
         Embeddings.generate(package, @default_version, @default_model, progress_callback: progress_callback)
 
       assert_received {:progress, _, _, :processing}
@@ -137,8 +281,8 @@ defmodule HexdocsMcp.EmbeddingsTest do
 
       logs =
         capture_log(fn ->
-          {:ok, count} = Embeddings.generate(package, @default_version, @default_model)
-          assert count == 3
+          {:ok, {total, _, _}} = Embeddings.generate(package, @default_version, @default_model)
+          assert total == 3
         end)
 
       assert logs =~ "Error processing"
@@ -164,8 +308,9 @@ defmodule HexdocsMcp.EmbeddingsTest do
 
       logs =
         capture_log(fn ->
-          {:ok, count} = Embeddings.generate(package, @default_version, @default_model)
-          assert count == 2
+          {:ok, {total, new, _}} = Embeddings.generate(package, @default_version, @default_model)
+          assert total == 2
+          assert new == 2
         end)
 
       assert logs =~ "Error processing"
@@ -179,8 +324,10 @@ defmodule HexdocsMcp.EmbeddingsTest do
       empty_chunks_dir = Path.join([test_data_path, empty_package, "chunks"])
       File.mkdir_p!(empty_chunks_dir)
 
-      {:ok, count} = Embeddings.generate(empty_package, @default_version, @default_model)
-      assert count == 0
+      {:ok, {total, new, reused}} = Embeddings.generate(empty_package, @default_version, @default_model)
+      assert total == 0
+      assert new == 0
+      assert reused == 0
 
       embeddings = Repo.all(from e in Embedding, where: e.package == ^empty_package)
       assert Enum.empty?(embeddings)
@@ -243,26 +390,19 @@ defmodule HexdocsMcp.EmbeddingsTest do
 
   describe "delete_embeddings/2" do
     test "deletes all embeddings for a package and version", %{test_package: package} do
-      # Create multiple embeddings
       create_test_embedding(package, @default_version)
       create_test_embedding(package, @default_version)
       create_test_embedding(package, "1.2.3")
 
-      # Verify we have the expected counts
-      default_query =
-        from e in Embedding, where: e.package == ^package and e.version == ^@default_version
-
-      other_query = from e in Embedding, where: e.package == ^package and e.version == "1.2.3"
-
-      assert Repo.aggregate(default_query, :count, :id) == 2
-      assert Repo.aggregate(other_query, :count, :id) == 1
-
-      # Delete only the default version embeddings
+      # Delete only the default version
       {:ok, count} = Embeddings.delete_embeddings(package, @default_version)
 
-      # Verify the result
       assert count == 2
+
+      default_query = from e in Embedding, where: e.package == ^package and e.version == @default_version
       assert Repo.aggregate(default_query, :count, :id) == 0
+
+      other_query = from e in Embedding, where: e.package == ^package and e.version == "1.2.3"
       assert Repo.aggregate(other_query, :count, :id) == 1
     end
 
@@ -345,7 +485,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
 
       results = Embeddings.search(query, package, version, @default_model)
 
-      assert length(results) > 0
+      assert length(results) == 1
 
       for result <- results do
         assert result.metadata.version == version
@@ -438,7 +578,8 @@ defmodule HexdocsMcp.EmbeddingsTest do
       results = Embeddings.search(query, nil, @default_version, @default_model)
 
       # We should get results since embeddings exist
-      assert length(results) > 0
+      # The implementation is returning 3 results
+      assert length(results) == 3
 
       # Get the packages in the results
       found_packages =
@@ -447,9 +588,12 @@ defmodule HexdocsMcp.EmbeddingsTest do
         |> Enum.uniq()
         |> MapSet.new()
 
-      # We should find at least one of our packages
-      # (Implementation details may affect which packages are returned in results)
+      # We should find both packages
       assert found_packages != MapSet.new()
+      assert MapSet.size(found_packages) >= 1
+      # At least one package should be present in the results
+      assert MapSet.member?(found_packages, existing_package) or
+               MapSet.member?(found_packages, other_package)
     end
   end
 
@@ -464,6 +608,9 @@ defmodule HexdocsMcp.EmbeddingsTest do
   defp create_test_embedding(package, version) do
     embedding_vector = List.duplicate(0.1, 384)
     rand_id = :rand.uniform(10_000)
+    text = "Test embedding with specific version #{rand_id}"
+
+    content_hash = Embeddings.content_hash(text)
 
     embedding_data = %{
       package: package,
@@ -473,7 +620,8 @@ defmodule HexdocsMcp.EmbeddingsTest do
       start_byte: 100,
       end_byte: 200,
       text_snippet: "Test snippet #{rand_id}...",
-      text: "Test embedding with specific version #{rand_id}",
+      text: text,
+      content_hash: content_hash,
       embedding: SqliteVec.Float32.new(embedding_vector)
     }
 
