@@ -31,7 +31,7 @@ Add this to your client's MCP json config:
 }
 ```
 
-This command will automatically download the elixir binaries to both fetch and search documentation. There's no need to install the elixir binaries separately or even have elixir installed!
+This command will automatically download the elixir binaries to both fetch and search documentation. While the server handles downloading the binaries, you still need Elixir and Mix installed on your system for the HexDocs fetching functionality to work properly.
 
 #### Smithery
 
@@ -71,7 +71,10 @@ But you can update it to be available in the :dev environment:
 - [Ollama](https://ollama.ai) - Required for generating embeddings
   - Run `ollama pull nomic-embed-text` to download the recommended embedding model
   - Ensure Ollama is running before using the embedding features
-- Elixir 1.16+
+- Elixir 1.16+ and Erlang/OTP 26+ 
+  - Installed automatically in CI environments
+  - Required locally for development
+- Mix - The Elixir build tool (comes with Elixir installation)
 - Node.js 22 or later (for the MCP server)
 
 ## Configuration
