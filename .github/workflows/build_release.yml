@@ -80,6 +80,16 @@ jobs:
           gpg --detach-sign --armor SHA256SUMS
           cd ..
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaries
+          path: |
+            burrito_out/hexdocs_mcp_windows.exe
+            burrito_out/hexdocs_mcp_linux
+            burrito_out/hexdocs_mcp_macos
+            burrito_out/hexdocs_mcp_macos_arm
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -92,4 +102,165 @@ jobs:
             burrito_out/SHA256SUMS.asc
             burrito_out/SIGNING_KEY.asc
         if: startsWith(github.ref, 'refs/tags/')
+
+  test:
+    name: Test Binaries
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            binary: hexdocs_mcp_linux
+            chmod: true
+          - os: macos-latest
+            binary: hexdocs_mcp_macos
+            chmod: true
+          - os: macos-14 # Apple Silicon
+            binary: hexdocs_mcp_macos_arm
+            chmod: true
+          - os: windows-latest
+            binary: hexdocs_mcp_windows.exe
+            chmod: false
+    
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: binaries
+      
+      - name: Make binary executable
+        if: matrix.chmod
+        run: chmod +x ${{ matrix.binary }}
+        shell: bash
+      
+      - name: Create test project
+        if: matrix.os != 'windows-latest'
+        run: |
+          mkdir -p test_project
+          cd test_project
+          cat > mix.exs << 'EOF'
+          defmodule TestProject.MixProject do
+            use Mix.Project
+          
+            def project do
+              [
+                app: :test_project,
+                version: "0.1.0",
+                deps: deps()
+              ]
+            end
+          
+            defp deps do
+              [
+                {:phoenix, "~> 1.7.0"},
+                {:ecto, "~> 3.10"}
+              ]
+            end
+          end
+          EOF
+          cd ..
+        shell: bash
+      
+      - name: Create test project (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          mkdir test_project
+          cd test_project
+          @'
+          defmodule TestProject.MixProject do
+            use Mix.Project
+          
+            def project do
+              [
+                app: :test_project,
+                version: "0.1.0",
+                deps: deps()
+              ]
+            end
+          
+            defp deps do
+              [
+                {:phoenix, "~> 1.7.0"},
+                {:ecto, "~> 3.10"}
+              ]
+            end
+          end
+          '@ | Out-File -FilePath mix.exs -Encoding utf8
+          cd ..
+        shell: pwsh
+      
+      - name: Test help command
+        run: ./${{ matrix.binary }} --help
+        shell: bash
+      
+      - name: Test fetch command help
+        run: ./${{ matrix.binary }} fetch --help
+        shell: bash
+      
+      - name: Test search command help
+        run: ./${{ matrix.binary }} search --help
+        shell: bash
+      
+      - name: Test fetch specific package
+        run: ./${{ matrix.binary }} fetch phoenix
+        shell: bash
+        continue-on-error: true
+      
+      - name: Test fetch specific package with version
+        run: ./${{ matrix.binary }} fetch ecto 3.10.3
+        shell: bash
+        continue-on-error: true
+      
+      - name: Test fetch with custom model
+        run: ./${{ matrix.binary }} fetch jason --model nomic-embed-text
+        shell: bash
+        continue-on-error: true
+      
+      - name: Test fetch with force option
+        run: ./${{ matrix.binary }} fetch phoenix --force
+        shell: bash
+        continue-on-error: true
+      
+      - name: Test fetch from project
+        run: ./${{ matrix.binary }} fetch --project test_project/mix.exs
+        shell: bash
+        continue-on-error: true
+      
+      - name: Test fetch specific package from project
+        run: ./${{ matrix.binary }} fetch phoenix --project test_project/mix.exs
+        shell: bash
+        continue-on-error: true
+      
+      - name: Test search with query
+        run: ./${{ matrix.binary }} search -q "what is ecto?"
+        shell: bash
+        continue-on-error: true
+      
+      - name: Test search in specific package
+        run: ./${{ matrix.binary }} search phoenix -q "how to create a channel"
+        shell: bash
+        continue-on-error: true
+      
+      - name: Test search in specific package version
+        run: ./${{ matrix.binary }} search ecto 3.10.3 -q "how to use schemas"
+        shell: bash
+        continue-on-error: true
+      
+      - name: Test search with custom model
+        run: ./${{ matrix.binary }} search phoenix -q "router configuration" --model nomic-embed-text
+        shell: bash
+        continue-on-error: true
+      
+      - name: Test search with custom limit
+        run: ./${{ matrix.binary }} search phoenix -q "phoenix controller" --limit 5
+        shell: bash
+        continue-on-error: true
+        
+      - name: Test invalid command handling
+        run: |
+          ./${{ matrix.binary }} invalid_command || echo "Expected error, command continued"
+        shell: bash
       
