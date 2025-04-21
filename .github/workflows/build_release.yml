@@ -116,9 +116,6 @@ jobs:
             binary: hexdocs_mcp_linux
             chmod: true
           - os: macos-latest
-            binary: hexdocs_mcp_macos
-            chmod: true
-          - os: macos-14 # Apple Silicon
             binary: hexdocs_mcp_macos_arm
             chmod: true
           - os: windows-latest
@@ -135,6 +132,39 @@ jobs:
         if: matrix.chmod
         run: chmod +x ${{ matrix.binary }}
         shell: bash
+      
+      - name: Install Ollama (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5  # Give Ollama time to start
+          # Pull the embedding model we'll use
+          ollama pull nomic-embed-text
+        shell: bash
+      
+      - name: Install Ollama (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5  # Give Ollama time to start
+          # Pull the embedding model we'll use
+          ollama pull nomic-embed-text
+        shell: bash
+      
+      - name: Install Ollama (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          # Download and install Ollama for Windows
+          Invoke-WebRequest -Uri "https://ollama.com/download/ollama-windows-amd64.zip" -OutFile "ollama.zip"
+          Expand-Archive -Path "ollama.zip" -DestinationPath "C:\ollama"
+          # Start Ollama as a background process
+          Start-Process -FilePath "C:\ollama\ollama.exe" -ArgumentList "serve" -NoNewWindow
+          Start-Sleep -Seconds 5  # Give Ollama time to start
+          # Pull the embedding model we'll use
+          C:\ollama\ollama.exe pull nomic-embed-text
+        shell: pwsh
       
       - name: Create test project
         if: matrix.os != 'windows-latest'
