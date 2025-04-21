@@ -121,6 +121,37 @@ jobs:
           - os: windows-latest
             binary: hexdocs_mcp_windows.exe
             chmod: false
+        command:
+          - name: "Help Command"
+            run: "--help"
+          - name: "Fetch Command Help"
+            run: "fetch --help"
+          - name: "Search Command Help"
+            run: "search --help"
+          - name: "Fetch Specific Package"
+            run: "fetch phoenix"
+          - name: "Fetch Specific Package with Version"
+            run: "fetch ecto 3.10.3"
+          - name: "Fetch with Custom Model"
+            run: "fetch jason --model nomic-embed-text"
+          - name: "Fetch with Force Option"
+            run: "fetch phoenix --force"
+          - name: "Fetch from Project"
+            run: "fetch --project test_project/mix.exs"
+          - name: "Fetch Specific Package from Project"
+            run: "fetch phoenix --project test_project/mix.exs"
+          - name: "Search with Query"
+            run: "search -q \"what is ecto?\""
+          - name: "Search in Specific Package"
+            run: "search phoenix -q \"how to create a channel\""
+          - name: "Search in Specific Package Version"
+            run: "search ecto 3.10.3 -q \"how to use schemas\""
+          - name: "Search with Custom Model"
+            run: "search phoenix -q \"router configuration\" --model nomic-embed-text"
+          - name: "Search with Custom Limit"
+            run: "search phoenix -q \"phoenix controller\" --limit 5"
+          - name: "Invalid Command Handling"
+            run: "invalid_command || exit 1"
     
     steps:
       - name: Download artifacts
@@ -229,75 +260,7 @@ jobs:
           cd ..
         shell: pwsh
       
-      - name: Test help command
-        run: ./${{ matrix.binary }} --help
-        shell: bash
-      
-      - name: Test fetch command help
-        run: ./${{ matrix.binary }} fetch --help
-        shell: bash
-      
-      - name: Test search command help
-        run: ./${{ matrix.binary }} search --help
-        shell: bash
-      
-      - name: Test fetch specific package
-        run: ./${{ matrix.binary }} fetch phoenix
-        shell: bash
-        continue-on-error: true
-      
-      - name: Test fetch specific package with version
-        run: ./${{ matrix.binary }} fetch ecto 3.10.3
-        shell: bash
-        continue-on-error: true
-      
-      - name: Test fetch with custom model
-        run: ./${{ matrix.binary }} fetch jason --model nomic-embed-text
-        shell: bash
-        continue-on-error: true
-      
-      - name: Test fetch with force option
-        run: ./${{ matrix.binary }} fetch phoenix --force
-        shell: bash
-        continue-on-error: true
-      
-      - name: Test fetch from project
-        run: ./${{ matrix.binary }} fetch --project test_project/mix.exs
-        shell: bash
-        continue-on-error: true
-      
-      - name: Test fetch specific package from project
-        run: ./${{ matrix.binary }} fetch phoenix --project test_project/mix.exs
-        shell: bash
-        continue-on-error: true
-      
-      - name: Test search with query
-        run: ./${{ matrix.binary }} search -q "what is ecto?"
-        shell: bash
-        continue-on-error: true
-      
-      - name: Test search in specific package
-        run: ./${{ matrix.binary }} search phoenix -q "how to create a channel"
-        shell: bash
-        continue-on-error: true
-      
-      - name: Test search in specific package version
-        run: ./${{ matrix.binary }} search ecto 3.10.3 -q "how to use schemas"
-        shell: bash
-        continue-on-error: true
-      
-      - name: Test search with custom model
-        run: ./${{ matrix.binary }} search phoenix -q "router configuration" --model nomic-embed-text
-        shell: bash
-        continue-on-error: true
-      
-      - name: Test search with custom limit
-        run: ./${{ matrix.binary }} search phoenix -q "phoenix controller" --limit 5
-        shell: bash
-        continue-on-error: true
-        
-      - name: Test invalid command handling
-        run: |
-          ./${{ matrix.binary }} invalid_command || echo "Expected error, command continued"
+      - name: Run ${{ matrix.command.name }}
+        run: ./${{ matrix.binary }} ${{ matrix.command.run }}
         shell: bash
       
