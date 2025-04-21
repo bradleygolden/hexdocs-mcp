@@ -111,10 +111,7 @@ defmodule HexdocsMcp.MixProject do
       hexdocs_mcp: [
         steps: [:assemble, &Burrito.wrap/1],
         burrito: [
-          plugin: "./windows_path_fix.zig",
           extra_steps: [
-            fetch: [pre: []],
-            patch: [pre: []],
             build: [pre: [HexdocsMcp.WindowsPathFixes]]
           ],
           targets: [
