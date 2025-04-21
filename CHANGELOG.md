@@ -46,6 +46,11 @@ That's it! The MCP server will now automatically handle downloading and using th
   - Maintains embedding consistency while reducing computational cost
   - Hash generation uses SHA-256 for reliable content identification
 
+## [0.3.1]
+
+### Fixed
+- Fixed SQLite vec extension not being properly loaded in binaries, resolving "no such function: vec_f32" error ([#4](https://github.com/bradleygolden/hexdocs-mcp/issues/4))
+
 ## [0.3.0]
 
 ### Added
@@ -125,7 +130,8 @@ Initial release of HexDocs MCP, providing semantic search capabilities for Hex p
   - Default model: `nomic-embed-text`
   - Support for alternative models like `all-minilm`
 
-[Unreleased]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/bradleygolden/hexdocs-mcp/releases/tag/v0.1.2
