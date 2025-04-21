@@ -151,10 +151,8 @@ jobs:
       - name: Install Ollama (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          # Install Ollama using Homebrew
           brew install --cask ollama
           
-          # Start Ollama service
           ollama serve &
           sleep 5  # Give Ollama time to start
           
@@ -175,7 +173,7 @@ jobs:
           C:\ollama\ollama.exe pull nomic-embed-text
         shell: pwsh
       
-      - name: Create test project
+      - name: Create test project (Linux/macOS)
         if: matrix.os != 'windows-latest'
         run: |
           mkdir -p test_project
