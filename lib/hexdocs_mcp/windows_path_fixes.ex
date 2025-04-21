@@ -11,7 +11,7 @@ defmodule HexdocsMcp.WindowsPathFixes do
   Entry point for the build step. It receives the Burrito context
   and returns the modified context.
   """
-  def run(context) do
+  def execute(context) do
     os_type = get_target_os(context)
 
     if os_type == :windows do
