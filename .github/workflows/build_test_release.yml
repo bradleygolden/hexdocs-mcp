@@ -143,18 +143,23 @@ jobs:
           ollama pull nomic-embed-text
         shell: bash
       
+      - name: Set up Homebrew
+        if: matrix.os == 'macos-latest'
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+      
       - name: Install Ollama (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          # Download the macOS binary directly from GitHub releases
-          curl -L https://github.com/ollama/ollama/releases/latest/download/ollama-darwin.tgz -o ollama.tgz
-          tar -xzf ollama.tgz
-          chmod +x ollama
+          # Install Ollama using Homebrew
+          brew install --cask ollama
+          
           # Start Ollama service
-          ./ollama serve &
+          ollama serve &
           sleep 5  # Give Ollama time to start
+          
           # Pull the embedding model we'll use
-          ./ollama pull nomic-embed-text
+          ollama pull nomic-embed-text
         shell: bash
       
       - name: Install Ollama (Windows)
