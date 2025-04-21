@@ -119,8 +119,12 @@ defmodule HexdocsMcp.MixProject do
             macos_arm: [os: :darwin, cpu: :aarch64],
             linux: [os: :linux, cpu: :x86_64],
             windows: [os: :windows, cpu: :x86_64,
-              nif_env: [{"BURRITO_WINDOWS_PATH_FIX", "true"}],
-              nif_cflags: "-DBURRITO_WINDOWS_PATH_FIX"]
+              nif_env: [
+                {"BURRITO_WINDOWS_PATH_FIX", "true"},
+                {"BURRITO_FORCE_WINDOWS_PATHS", "true"},
+                {"BURRITO_USE_WINDOWS_SEPARATORS", "true"}
+              ],
+              nif_cflags: "-DBURRITO_WINDOWS_PATH_FIX -DBURRITO_FORCE_WINDOWS_PATHS -DWIN32 -D_WINDOWS"]
           ]
         ]
       ]
