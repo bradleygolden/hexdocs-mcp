@@ -49,6 +49,9 @@ defmodule HexdocsMcp.WindowsPathConverter do
           "#{prefix}#{String.replace(path, "/", "\\")}#{suffix}"
         end)
 
+        # Specifically handle /bin/start.boot pattern that's causing the error
+        new_content = Regex.replace(~r{/bin/start\.boot}, new_content, "\\\\bin\\\\start.boot")
+
         # Write back the modified content
         if new_content != content do
           File.write!(file_path, new_content)

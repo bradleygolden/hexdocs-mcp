@@ -112,7 +112,7 @@ defmodule HexdocsMcp.MixProject do
         steps: [:assemble, &Burrito.wrap/1],
         burrito: [
           extra_steps: [
-            build: [pre: [HexdocsMcp.WindowsPathFixes]]
+            patch: [post: [HexdocsMcp.WindowsPathFixes]]
           ],
           targets: [
             macos: [os: :darwin, cpu: :x86_64],

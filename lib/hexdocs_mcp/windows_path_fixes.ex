@@ -60,6 +60,13 @@ defmodule HexdocsMcp.WindowsPathFixes do
           if File.dir?(bin_dir) do
             Logger.info("Processing bin directory: #{bin_dir}")
 
+            # Process .bat files to ensure paths are properly quoted
+            bat_files = Path.wildcard(Path.join(bin_dir, "*.bat"))
+            Enum.each(bat_files, fn bat_file ->
+              Logger.info("Fixing and quoting paths in .bat file: #{bat_file}")
+              fix_bat_file_paths(bat_file)
+            end)
+
             # Process the start.boot file specially if it exists
             boot_files = Path.wildcard(Path.join([release_path, "**", "*.{boot,script}"]))
 
@@ -89,5 +96,35 @@ defmodule HexdocsMcp.WindowsPathFixes do
 
     # Return the modified context
     context
+  end
+
+  # Add a new function to fix .bat files specifically
+  defp fix_bat_file_paths(bat_file) do
+    case File.read(bat_file) do
+      {:ok, content} ->
+        # Fix paths and also ensure they are properly quoted
+        # Quote %RELEASE_ROOT%\bin\start and other similar patterns
+        new_content = Regex.replace(~r/%([A-Za-z_]+)%\\bin\\start/, content, fn _, var ->
+          "\"%\\1%\\bin\\start\""
+        end)
+
+        # Quote %ERTS_DIR%\bin\erl.exe and other similar patterns
+        new_content = Regex.replace(~r/%([A-Za-z_]+)%\\([^%\s]+)/, new_content, fn _, var, path ->
+          "\"%\\1%\\#{path}\""
+        end)
+
+        # Write back the modified content if changes were made
+        if new_content != content do
+          File.write!(bat_file, new_content)
+          Logger.info("Fixed and quoted paths in .bat file: #{bat_file}")
+        else
+          Logger.info("No path quoting needed in .bat file: #{bat_file}")
+        end
+        :ok
+
+      {:error, reason} ->
+        Logger.error("Error reading .bat file for path quoting: #{bat_file}, reason: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 end
