@@ -133,6 +133,33 @@ jobs:
         run: chmod +x ${{ matrix.binary }}
         shell: bash
       
+      - name: Install Elixir (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          wget https://packages.erlang-solutions.com/erlang-solutions_2.0_all.deb
+          sudo dpkg -i erlang-solutions_2.0_all.deb
+          sudo apt-get update
+          sudo apt-get install -y esl-erlang elixir
+          mix local.hex --force
+          mix local.rebar --force
+        shell: bash
+      
+      - name: Install Elixir (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install erlang elixir
+          mix local.hex --force
+          mix local.rebar --force
+        shell: bash
+      
+      - name: Install Elixir (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install elixir
+          mix local.hex --force
+          mix local.rebar --force
+        shell: pwsh
+      
       - name: Install Ollama (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
