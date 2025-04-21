@@ -101,7 +101,7 @@ jobs:
           # Export the public key
           gpg --armor --export ${{ secrets.GPG_KEY_ID }} > SIGNING_KEY.asc
           # Sign the checksums
-          gpg --detach-sign --armor SHA256SUMS
+          gpg --batch --yes --detach-sign --armor SHA256SUMS
           cd ..
 
       - name: Upload artifacts
