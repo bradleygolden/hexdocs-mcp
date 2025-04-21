@@ -130,7 +130,7 @@ jobs:
   test:
     name: Test Binaries
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
