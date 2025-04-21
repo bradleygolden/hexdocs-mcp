@@ -17,28 +17,52 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: goto-bus-stop/setup-zig@v2
+      - name: Generate cache keys
+        id: cache-keys
+        run: |
+          # Create hash for Elixir code files
+          find lib mix.exs mix.lock -type f -name "*.ex" -o -name "*.exs" | sort | xargs cat | shasum -a 256 | cut -d ' ' -f1 > elixir_hash
+          # Create hash for MCP server code
+          shasum -a 256 index.ts | cut -d ' ' -f1 > mcp_hash
+          echo "elixir_hash=$(cat elixir_hash)" >> $GITHUB_OUTPUT
+          echo "mcp_hash=$(cat mcp_hash)" >> $GITHUB_OUTPUT
+
+      - name: Cache build artifacts
+        id: cache-build
+        uses: actions/cache@v4
+        with:
+          path: burrito_out
+          key: ${{ runner.os }}-burrito-${{ steps.cache-keys.outputs.elixir_hash }}-${{ steps.cache-keys.outputs.mcp_hash }}
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+      - if: steps.cache-build.outputs.cache-hit != 'true' || startsWith(github.ref, 'refs/tags/')
+        uses: goto-bus-stop/setup-zig@v2
         with:
           version: 0.14.0
 
-      - run: sudo apt-get -y install xz-utils
+      - if: steps.cache-build.outputs.cache-hit != 'true' || startsWith(github.ref, 'refs/tags/')
+        run: sudo apt-get -y install xz-utils
 
-      - uses: erlef/setup-beam@v1
+      - if: steps.cache-build.outputs.cache-hit != 'true' || startsWith(github.ref, 'refs/tags/')
+        uses: erlef/setup-beam@v1
         with:
           otp-version: '27'
           elixir-version: '1.18'
 
-      - uses: actions/setup-node@v4
+      - if: steps.cache-build.outputs.cache-hit != 'true' || startsWith(github.ref, 'refs/tags/')
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install dependencies
+      - if: steps.cache-build.outputs.cache-hit != 'true' || startsWith(github.ref, 'refs/tags/')
+        name: Install dependencies
         run: |
           mix local.hex --force
           mix local.rebar --force
           mix deps.get
 
-      - name: Build release with Burrito
+      - if: steps.cache-build.outputs.cache-hit != 'true' || startsWith(github.ref, 'refs/tags/')
+        name: Build release with Burrito
         run: |
           mix deps.compile
           MIX_ENV=prod mix release
@@ -211,8 +235,7 @@ jobs:
           
             defp deps do
               [
-                {:phoenix, "~> 1.7.0"},
-                {:ecto, "~> 3.10"}
+                {:nimble_parsec, "~> 1.4"}
               ]
             end
           end
@@ -239,8 +262,7 @@ jobs:
           
             defp deps do
               [
-                {:phoenix, "~> 1.7.0"},
-                {:ecto, "~> 3.10"}
+                {:nimble_parsec, "~> 1.4"}
               ]
             end
           end
@@ -261,11 +283,11 @@ jobs:
         shell: bash
       
       - name: Test fetch specific package
-        run: ./${{ matrix.binary }} fetch phoenix
+        run: ./${{ matrix.binary }} fetch nimble_parsec
         shell: bash
       
       - name: Test fetch specific package with version
-        run: ./${{ matrix.binary }} fetch ecto 3.10.3
+        run: ./${{ matrix.binary }} fetch nimble_parsec 1.4.0
         shell: bash
       
       - name: Test fetch with custom model
@@ -281,27 +303,27 @@ jobs:
         shell: bash
       
       - name: Test fetch specific package from project
-        run: ./${{ matrix.binary }} fetch phoenix --project test_project/mix.exs
+        run: ./${{ matrix.binary }} fetch nimble_parsec --project test_project/mix.exs
         shell: bash
       
       - name: Test search with query
-        run: ./${{ matrix.binary }} search -q "what is ecto?"
+        run: ./${{ matrix.binary }} search -q "what is nimble_parsec?"
         shell: bash
       
       - name: Test search in specific package
-        run: ./${{ matrix.binary }} search phoenix -q "how to create a channel"
+        run: ./${{ matrix.binary }} search nimble_parsec -q "how to define a parser"
         shell: bash
       
       - name: Test search in specific package version
-        run: ./${{ matrix.binary }} search ecto 3.10.3 -q "how to use schemas"
+        run: ./${{ matrix.binary }} search nimble_parsec 1.4.0 -q "how to use combinators"
         shell: bash
       
       - name: Test search with custom model
-        run: ./${{ matrix.binary }} search phoenix -q "router configuration" --model nomic-embed-text
+        run: ./${{ matrix.binary }} search nimble_parsec -q "parser configuration" --model nomic-embed-text
         shell: bash
       
       - name: Test search with custom limit
-        run: ./${{ matrix.binary }} search phoenix -q "phoenix controller" --limit 5
+        run: ./${{ matrix.binary }} search nimble_parsec -q "nimble parser" --limit 5
         shell: bash
         
       - name: Test invalid command handling
