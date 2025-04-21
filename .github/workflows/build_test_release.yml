@@ -295,7 +295,7 @@ jobs:
         shell: bash
       
       - name: Test fetch with force option
-        run: ./${{ matrix.binary }} fetch phoenix --force
+        run: ./${{ matrix.binary }} fetch nimble_parsec --force
         shell: bash
       
       - name: Test fetch from project
