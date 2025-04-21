@@ -111,11 +111,19 @@ defmodule HexdocsMcp.MixProject do
       hexdocs_mcp: [
         steps: [:assemble, &Burrito.wrap/1],
         burrito: [
+          plugin: "./windows_path_fix.zig",
+          extra_steps: [
+            fetch: [pre: []],
+            patch: [pre: []],
+            build: [pre: [HexdocsMcp.WindowsPathFixes]]
+          ],
           targets: [
             macos: [os: :darwin, cpu: :x86_64],
             macos_arm: [os: :darwin, cpu: :aarch64],
             linux: [os: :linux, cpu: :x86_64],
-            windows: [os: :windows, cpu: :x86_64]
+            windows: [os: :windows, cpu: :x86_64,
+              nif_env: [{"BURRITO_WINDOWS_PATH_FIX", "true"}],
+              nif_cflags: "-DBURRITO_WINDOWS_PATH_FIX"]
           ]
         ]
       ]
