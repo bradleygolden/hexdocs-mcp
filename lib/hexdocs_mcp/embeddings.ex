@@ -119,18 +119,30 @@ defmodule HexdocsMcp.Embeddings do
       if force? do
         generate_new_embedding(text, metadata, content_hash, client, model, chunk_file)
       else
-        existing_embedding = find_existing_embedding(package, version, content_hash)
-
-        if existing_embedding do
-          {:ok, :reused, update_existing_embedding_changeset(existing_embedding, metadata)}
-        else
-          generate_new_embedding(text, metadata, content_hash, client, model, chunk_file)
-        end
+        process_existing_embedding(text, metadata, content_hash, package, version, client, model, chunk_file)
       end
     else
       error ->
         Logger.error("Error processing #{chunk_file}: #{inspect(error)}")
         {:error, error}
+    end
+  end
+
+  defp process_existing_embedding(text, metadata, content_hash, package, version, client, model, chunk_file) do
+    existing_embedding = find_existing_embedding(package, version, content_hash)
+    if existing_embedding do
+      {:ok, :reused, update_existing_embedding_changeset(existing_embedding, metadata)}
+    else
+      process_embedding_with_hash(text, metadata, content_hash, package, client, model, chunk_file)
+    end
+  end
+
+  defp process_embedding_with_hash(text, metadata, content_hash, package, client, model, chunk_file) do
+    existing_hash = find_embedding_with_hash(package, content_hash)
+    if existing_hash do
+      {:ok, :reused, copy_embedding_changeset(existing_hash, text, metadata, content_hash)}
+    else
+      generate_new_embedding(text, metadata, content_hash, client, model, chunk_file)
     end
   end
 
@@ -152,15 +164,15 @@ defmodule HexdocsMcp.Embeddings do
   end
 
   defp find_existing_embedding(package, version, content_hash) do
-    if is_nil(package) or is_nil(version) or is_nil(content_hash) do
+    if is_nil(package) or is_nil(content_hash) do
       nil
     else
       query =
         from e in Embedding,
           where:
             e.package == ^package and
-              e.version == ^version and
-              e.content_hash == ^content_hash,
+            e.version == ^version and
+            e.content_hash == ^content_hash,
           limit: 1
 
       Repo.one(query)
@@ -172,10 +184,46 @@ defmodule HexdocsMcp.Embeddings do
       source_file: metadata["source_file"],
       source_type: metadata["source_type"],
       start_byte: metadata["start_byte"],
-      end_byte: metadata["end_byte"]
+      end_byte: metadata["end_byte"],
+      version: metadata["version"] || "latest"
     }
 
     Embedding.changeset(embedding, changes)
+  end
+
+  defp find_embedding_with_hash(package, content_hash) do
+    if is_nil(package) or is_nil(content_hash) do
+      nil
+    else
+      query =
+        from e in Embedding,
+          where:
+            e.package == ^package and
+            e.content_hash == ^content_hash,
+          limit: 1
+
+      Repo.one(query)
+    end
+  end
+
+  defp copy_embedding_changeset(existing, text, metadata, content_hash) do
+    text_snippet =
+      if String.length(text) > @snippet_length,
+        do: String.slice(text, 0, @snippet_length) <> "...",
+        else: text
+
+    Embedding.changeset(%Embedding{}, %{
+      package: metadata["package"],
+      version: metadata["version"] || "latest",
+      source_file: metadata["source_file"],
+      source_type: metadata["source_type"],
+      start_byte: metadata["start_byte"],
+      end_byte: metadata["end_byte"],
+      text_snippet: text_snippet,
+      text: text,
+      content_hash: content_hash,
+      embedding: existing.embedding
+    })
   end
 
   defp extract_embedding(response, chunk_file) do

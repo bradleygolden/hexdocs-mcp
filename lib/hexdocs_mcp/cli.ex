@@ -63,6 +63,7 @@ defmodule HexdocsMcp.CLI do
 
     try do
       HexdocsMcp.Repo.query!("SELECT 1 FROM embeddings LIMIT 1")
+      update_database_schema()
     rescue
       error in Exqlite.Error ->
         if error.message =~ "no such table" do
@@ -81,5 +82,9 @@ defmodule HexdocsMcp.CLI do
   defp init_database do
     Enum.each(Migrations.create_embeddings_table(), fn sql -> Repo.query!(sql) end)
     Utils.output_info("#{Utils.check()} Database initialized successfully!")
+  end
+
+  defp update_database_schema do
+    Migrations.update_embeddings_table()
   end
 end

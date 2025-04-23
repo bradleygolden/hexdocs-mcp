@@ -6,6 +6,8 @@ defmodule HexdocsMcp.Migrations do
   migrations and in test environments.
   """
 
+  alias HexdocsMcp.Repo
+
   @doc """
   Creates the embeddings table.
 
@@ -38,6 +40,22 @@ defmodule HexdocsMcp.Migrations do
       "CREATE INDEX IF NOT EXISTS idx_embeddings_package_version ON embeddings(package, version)#{create_opts};",
       "CREATE INDEX IF NOT EXISTS idx_embeddings_content_hash ON embeddings(package, version, content_hash)#{create_opts};"
     ]
+  end
+
+  @doc """
+  Updates the embeddings table schema to ensure all required columns exist.
+
+  This should be called on application start to ensure the database schema is up-to-date.
+  """
+  def update_embeddings_table do
+    %{rows: table_info} = Repo.query!("PRAGMA table_info(embeddings)")
+    has_content_hash? = Enum.any?(table_info, &Enum.at(&1, 1) == "content_hash")
+
+    if not has_content_hash? do
+      Repo.query!("ALTER TABLE embeddings ADD COLUMN content_hash TEXT NOT NULL DEFAULT ''")
+    end
+
+    Repo.query!("CREATE INDEX IF NOT EXISTS idx_embeddings_content_hash ON embeddings(package, version, content_hash)")
   end
 
   @doc """

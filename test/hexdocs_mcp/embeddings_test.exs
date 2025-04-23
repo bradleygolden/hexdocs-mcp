@@ -146,6 +146,124 @@ defmodule HexdocsMcp.EmbeddingsTest do
       assert embedding.text == modified_text
     end
 
+    test "handles version-specific embeddings with same content hash", %{test_package: package, chunks_dir: chunks_dir} do
+      File.rm_rf!(chunks_dir)
+      File.mkdir_p!(chunks_dir)
+
+      text = "This is a test text for cross-version testing"
+      content_hash = Embeddings.content_hash(text)
+
+      chunk_file = Path.join(chunks_dir, "chunk_1.json")
+      chunk_content = %{
+        "text" => text,
+        "metadata" => %{
+          "package" => package,
+          "version" => @default_version,
+          "source_file" => "test_file_v1.ex",
+          "source_type" => "docs",
+          "start_byte" => 100,
+          "end_byte" => 199,
+          "content_hash" => content_hash
+        }
+      }
+
+      File.write!(chunk_file, Jason.encode!(chunk_content))
+
+      {:ok, {1, 1, 0}} = Embeddings.generate(package, @default_version, @default_model)
+
+      new_version = "1.2.3"
+      File.rm_rf!(chunks_dir)
+      File.mkdir_p!(chunks_dir)
+
+      new_chunk_file = Path.join(chunks_dir, "new_version_chunk.json")
+      new_chunk_content = %{
+        "text" => text,
+        "metadata" => %{
+          "package" => package,
+          "version" => new_version,
+          "source_file" => "test_file_v2.ex",
+          "source_type" => "docs",
+          "start_byte" => 200,
+          "end_byte" => 299,
+          "content_hash" => content_hash
+        }
+      }
+
+      File.write!(new_chunk_file, Jason.encode!(new_chunk_content))
+
+      {:ok, {1, 0, 1}} = Embeddings.generate(package, new_version, @default_model)
+
+      embeddings =
+        Repo.all(
+          from e in Embedding,
+            where:
+              e.package == ^package and
+              e.content_hash == ^content_hash
+        )
+
+      assert length(embeddings) == 2, "Should have separate embeddings for each version"
+
+      default_version_embedding =
+        Repo.one(
+          from e in Embedding,
+            where:
+              e.package == ^package and
+              e.version == ^@default_version and
+              e.content_hash == ^content_hash
+        )
+
+      new_version_embedding =
+        Repo.one(
+          from e in Embedding,
+            where:
+              e.package == ^package and
+              e.version == ^new_version and
+              e.content_hash == ^content_hash
+        )
+
+      refute is_nil(default_version_embedding), "Default version embedding should exist"
+      refute is_nil(new_version_embedding), "New version embedding should exist"
+
+      assert default_version_embedding.source_file == "test_file_v1.ex"
+      assert default_version_embedding.start_byte == 100
+      assert default_version_embedding.end_byte == 199
+
+      assert new_version_embedding.source_file == "test_file_v2.ex"
+      assert new_version_embedding.start_byte == 200
+      assert new_version_embedding.end_byte == 299
+
+      another_version = "2.0.0"
+      File.rm_rf!(chunks_dir)
+      File.mkdir_p!(chunks_dir)
+
+      third_chunk_file = Path.join(chunks_dir, "another_version_chunk.json")
+      third_chunk_content = %{
+        "text" => text,
+        "metadata" => %{
+          "package" => package,
+          "version" => another_version,
+          "source_file" => "test_file_v3.ex",
+          "source_type" => "docs",
+          "start_byte" => 300,
+          "end_byte" => 399,
+          "content_hash" => content_hash
+        }
+      }
+
+      File.write!(third_chunk_file, Jason.encode!(third_chunk_content))
+      {:ok, {1, 0, 1}} = Embeddings.generate(package, another_version, @default_model)
+
+      embeddings_after_third =
+        Repo.all(
+          from e in Embedding,
+            where:
+              e.package == ^package and
+              e.content_hash == ^content_hash
+        )
+
+      assert length(embeddings_after_third) == 3, "Should have three separate embeddings for three versions"
+    end
+
     test "respects force flag and regenerates all embeddings", %{test_package: package} do
       {:ok, {3, 3, 0}} = Embeddings.generate(package, @default_version, @default_model)
 
@@ -204,6 +322,159 @@ defmodule HexdocsMcp.EmbeddingsTest do
       assert updated_embedding.text == text
       assert updated_embedding.start_byte == 999
       assert updated_embedding.start_byte != original_start_byte
+    end
+
+    test "reuses embeddings within the same version", %{test_package: package, chunks_dir: chunks_dir} do
+      File.rm_rf!(chunks_dir)
+      File.mkdir_p!(chunks_dir)
+
+      text = "This is a test text for same-version reuse"
+      content_hash = Embeddings.content_hash(text)
+
+      chunk_file = Path.join(chunks_dir, "chunk_1.json")
+      chunk_content = %{
+        "text" => text,
+        "metadata" => %{
+          "package" => package,
+          "version" => @default_version,
+          "source_file" => "test_file_v1.ex",
+          "source_type" => "docs",
+          "start_byte" => 100,
+          "end_byte" => 199,
+          "content_hash" => content_hash
+        }
+      }
+
+      File.write!(chunk_file, Jason.encode!(chunk_content))
+
+      {:ok, {1, 1, 0}} = Embeddings.generate(package, @default_version, @default_model)
+
+      File.rm_rf!(chunks_dir)
+      File.mkdir_p!(chunks_dir)
+
+      new_chunk_file = Path.join(chunks_dir, "same_version_different_file.json")
+      new_chunk_content = %{
+        "text" => text,
+        "metadata" => %{
+          "package" => package,
+          "version" => @default_version,
+          "source_file" => "test_file_v2.ex",
+          "source_type" => "docs",
+          "start_byte" => 200,
+          "end_byte" => 299,
+          "content_hash" => content_hash
+        }
+      }
+
+      File.write!(new_chunk_file, Jason.encode!(new_chunk_content))
+
+      {:ok, {1, 0, 1}} = Embeddings.generate(package, @default_version, @default_model)
+
+      embeddings =
+        Repo.all(
+          from e in Embedding,
+            where:
+              e.package == ^package and
+              e.content_hash == ^content_hash
+        )
+
+      assert length(embeddings) == 1, "Expected only one embedding for the same version"
+
+      embedding = hd(embeddings)
+      assert embedding.version == @default_version
+      assert embedding.source_file == "test_file_v2.ex"
+      assert embedding.start_byte == 200
+      assert embedding.end_byte == 299
+    end
+
+    test "reuses embeddings across different versions with same content hash", %{test_package: package, chunks_dir: chunks_dir} do
+      File.rm_rf!(chunks_dir)
+      File.mkdir_p!(chunks_dir)
+
+      text = "This is a test text for cross-version embedding reuse"
+      content_hash = Embeddings.content_hash(text)
+
+      chunk_file = Path.join(chunks_dir, "chunk_1.json")
+      chunk_content = %{
+        "text" => text,
+        "metadata" => %{
+          "package" => package,
+          "version" => @default_version,
+          "source_file" => "test_file_v1.ex",
+          "source_type" => "docs",
+          "start_byte" => 100,
+          "end_byte" => 199,
+          "content_hash" => content_hash
+        }
+      }
+
+      File.write!(chunk_file, Jason.encode!(chunk_content))
+
+      test_pid = self()
+
+      HexdocsMcp.MockOllama
+      |> expect(:init, fn _ -> %{mock: true} end)
+      |> expect(:embed, fn _client, _opts ->
+        send(test_pid, :embedding_generated)
+        embedding = List.duplicate(0.1, 384)
+        {:ok, %{"embeddings" => [embedding]}}
+      end)
+
+      {:ok, {1, 1, 0}} = Embeddings.generate(package, @default_version, @default_model)
+      assert_received :embedding_generated
+
+      default_embedding =
+        Repo.one(
+          from e in Embedding,
+            where:
+              e.package == ^package and
+              e.version == ^@default_version and
+              e.content_hash == ^content_hash
+        )
+
+      refute is_nil(default_embedding)
+      assert default_embedding.source_file == "test_file_v1.ex"
+
+      new_version = "1.2.3"
+      File.rm_rf!(chunks_dir)
+      File.mkdir_p!(chunks_dir)
+
+      new_chunk_file = Path.join(chunks_dir, "new_version_chunk.json")
+      new_chunk_content = %{
+        "text" => text,
+        "metadata" => %{
+          "package" => package,
+          "version" => new_version,
+          "source_file" => "test_file_v2.ex",
+          "source_type" => "docs",
+          "start_byte" => 200,
+          "end_byte" => 299,
+          "content_hash" => content_hash
+        }
+      }
+
+      File.write!(new_chunk_file, Jason.encode!(new_chunk_content))
+
+      HexdocsMcp.MockOllama
+      |> expect(:init, fn _ -> %{mock: true} end)
+
+      {:ok, {1, 0, 1}} = Embeddings.generate(package, new_version, @default_model)
+
+      new_embedding =
+        Repo.one(
+          from e in Embedding,
+            where:
+              e.package == ^package and
+              e.version == ^new_version and
+              e.content_hash == ^content_hash
+        )
+
+      refute is_nil(new_embedding)
+      assert new_embedding.source_file == "test_file_v2.ex"
+      assert new_embedding.start_byte == 200
+      assert new_embedding.end_byte == 299
+
+      assert new_embedding.embedding == default_embedding.embedding
     end
   end
 
