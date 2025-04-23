@@ -355,7 +355,7 @@ async function main() {
     console.error("Initializing MCP server...");
     const server = new McpServer({
         name: "HexdocsMCP",
-        version: "0.3.1",
+        version: "0.4.0",
         description: "MCP server for searching Elixir Hex package documentation using embeddings"
     });
 

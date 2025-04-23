@@ -7,7 +7,7 @@ HexDocs MCP is a project that provides semantic search capabilities for Hex pack
 
 > [!CAUTION]
 > **This documentation reflects the current development state on the main branch.**
-> For documentation on the latest stable release, please see the [latest release page](https://github.com/bradleygolden/hexdocs-mcp/releases/latest) and the [latest release branch](https://github.com/bradleygolden/hexdocs-mcp/tree/v0.3.0).
+> For documentation on the latest stable release, please see the [latest release page](https://github.com/bradleygolden/hexdocs-mcp/releases/latest) and the [latest release branch](https://github.com/bradleygolden/hexdocs-mcp/tree/v0.3.1).
 
 ## Installation
 
