@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 That's it! The MCP server will now automatically handle downloading and using the appropriate binary for your platform.
 
+## [0.4.1]
+
+### Fixed
+- Fixed VSCode warning issues by adding tool descriptions to MCP server tool registration ([#6](https://github.com/bradleygolden/hexdocs-mcp/issues/6))
+
 ## [0.4.0]
 
 ### Added
@@ -130,7 +135,8 @@ Initial release of HexDocs MCP, providing semantic search capabilities for Hex p
   - Default model: `nomic-embed-text`
   - Support for alternative models like `all-minilm`
 
-[Unreleased]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.2.0...v0.3.0
