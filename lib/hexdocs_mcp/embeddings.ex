@@ -130,6 +130,7 @@ defmodule HexdocsMcp.Embeddings do
 
   defp process_existing_embedding(text, metadata, content_hash, package, version, client, model, chunk_file) do
     existing_embedding = find_existing_embedding(package, version, content_hash)
+
     if existing_embedding do
       {:ok, :reused, update_existing_embedding_changeset(existing_embedding, metadata)}
     else
@@ -139,6 +140,7 @@ defmodule HexdocsMcp.Embeddings do
 
   defp process_embedding_with_hash(text, metadata, content_hash, package, client, model, chunk_file) do
     existing_hash = find_embedding_with_hash(package, content_hash)
+
     if existing_hash do
       {:ok, :reused, copy_embedding_changeset(existing_hash, text, metadata, content_hash)}
     else
@@ -171,8 +173,8 @@ defmodule HexdocsMcp.Embeddings do
         from e in Embedding,
           where:
             e.package == ^package and
-            e.version == ^version and
-            e.content_hash == ^content_hash,
+              e.version == ^version and
+              e.content_hash == ^content_hash,
           limit: 1
 
       Repo.one(query)
@@ -199,7 +201,7 @@ defmodule HexdocsMcp.Embeddings do
         from e in Embedding,
           where:
             e.package == ^package and
-            e.content_hash == ^content_hash,
+              e.content_hash == ^content_hash,
           limit: 1
 
       Repo.one(query)
@@ -222,6 +224,7 @@ defmodule HexdocsMcp.Embeddings do
       text_snippet: text_snippet,
       text: text,
       content_hash: content_hash,
+      url: metadata["url"],
       embedding: existing.embedding
     })
   end
@@ -257,6 +260,7 @@ defmodule HexdocsMcp.Embeddings do
       text_snippet: text_snippet,
       text: text,
       content_hash: content_hash,
+      url: metadata["url"],
       embedding: SqliteVec.Float32.new(embedding)
     })
   end
@@ -373,6 +377,7 @@ defmodule HexdocsMcp.Embeddings do
             source_file: e.source_file,
             text: e.text,
             text_snippet: e.text_snippet,
+            url: e.url,
             score: vec_distance_L2(e.embedding, vec_f32(v))
           },
           limit: ^top_k
@@ -401,7 +406,8 @@ defmodule HexdocsMcp.Embeddings do
           version: result.version,
           source_file: result.source_file,
           text_snippet: result.text_snippet,
-          text: result.text
+          text: result.text,
+          url: result.url
         }
       }
     end)

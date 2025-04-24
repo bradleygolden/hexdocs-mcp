@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 That's it! The MCP server will now automatically handle downloading and using the appropriate binary for your platform.
 
+## [Unreleased]
+
+### Added
+- Added URL field to embedding metadata
+  - Allows LLMs to optionally fetch the original documentation URL
+  - Improves context retrieval with direct source references
+  - **Note:** Embeddings created before this update will have null URL values and won't be shown to the LLM
+  - To add URLs to existing embeddings:
+    - CLI: Run `mix hex.docs.mcp fetch PACKAGE --force`
+    - MCP: Ask `Please fetch the latest <PACKAGE> hexdocs with the force option`
+
 ## [0.4.0]
 
 ### Added

@@ -135,6 +135,9 @@ defmodule HexdocsMcp.CLI.Search do
       Utils.output_info("\n#{IO.ANSI.bright()}Result (score: #{formatted_score})#{IO.ANSI.reset()}")
 
       Utils.output_info("  File: #{metadata.source_file}")
+
+      if metadata.url, do: Utils.output_info("  URL: #{metadata.url}")
+
       Utils.output_info("  Text: #{metadata.text}")
     end)
   end

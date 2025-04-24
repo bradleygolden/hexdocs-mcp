@@ -16,13 +16,14 @@ defmodule HexdocsMcp.Embeddings.Embedding do
     field(:text_snippet, :string)
     field(:text, :string)
     field(:content_hash, :string)
+    field(:url, :string)
     field(:embedding, SqliteVec.Ecto.Float32)
 
     timestamps()
   end
 
   @required_fields [:package, :version, :source_file, :text, :embedding, :content_hash]
-  @optional_fields [:source_type, :start_byte, :end_byte, :text_snippet]
+  @optional_fields [:source_type, :start_byte, :end_byte, :text_snippet, :url]
 
   def changeset(embedding, attrs) do
     embedding

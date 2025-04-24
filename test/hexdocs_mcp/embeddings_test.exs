@@ -55,6 +55,30 @@ defmodule HexdocsMcp.EmbeddingsTest do
     end
   end
 
+  defp create_test_chunks_with_url(chunks_dir, package) do
+    for i <- 1..3 do
+      chunk_file = Path.join(chunks_dir, "chunk_#{i}.json")
+      text = "Sample text for chunk #{i}"
+
+      content_hash = Embeddings.content_hash(text)
+
+      chunk_content = %{
+        "text" => text,
+        "metadata" => %{
+          "package" => package,
+          "source_file" => "test_file_#{i}.ex",
+          "source_type" => "docs",
+          "start_byte" => i * 100,
+          "end_byte" => i * 100 + 99,
+          "content_hash" => content_hash,
+          "url" => "https://hexdocs.pm/#{package}/test_file_#{i}.html"
+        }
+      }
+
+      File.write!(chunk_file, Jason.encode!(chunk_content))
+    end
+  end
+
   defp setup_ollama_mock(context) do
     HexdocsMcp.MockOllama
     |> stub(:init, fn _ -> %{mock: true} end)
@@ -154,6 +178,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
       content_hash = Embeddings.content_hash(text)
 
       chunk_file = Path.join(chunks_dir, "chunk_1.json")
+
       chunk_content = %{
         "text" => text,
         "metadata" => %{
@@ -176,6 +201,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
       File.mkdir_p!(chunks_dir)
 
       new_chunk_file = Path.join(chunks_dir, "new_version_chunk.json")
+
       new_chunk_content = %{
         "text" => text,
         "metadata" => %{
@@ -198,7 +224,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
           from e in Embedding,
             where:
               e.package == ^package and
-              e.content_hash == ^content_hash
+                e.content_hash == ^content_hash
         )
 
       assert length(embeddings) == 2, "Should have separate embeddings for each version"
@@ -208,8 +234,8 @@ defmodule HexdocsMcp.EmbeddingsTest do
           from e in Embedding,
             where:
               e.package == ^package and
-              e.version == ^@default_version and
-              e.content_hash == ^content_hash
+                e.version == ^@default_version and
+                e.content_hash == ^content_hash
         )
 
       new_version_embedding =
@@ -217,8 +243,8 @@ defmodule HexdocsMcp.EmbeddingsTest do
           from e in Embedding,
             where:
               e.package == ^package and
-              e.version == ^new_version and
-              e.content_hash == ^content_hash
+                e.version == ^new_version and
+                e.content_hash == ^content_hash
         )
 
       refute is_nil(default_version_embedding), "Default version embedding should exist"
@@ -237,6 +263,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
       File.mkdir_p!(chunks_dir)
 
       third_chunk_file = Path.join(chunks_dir, "another_version_chunk.json")
+
       third_chunk_content = %{
         "text" => text,
         "metadata" => %{
@@ -258,7 +285,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
           from e in Embedding,
             where:
               e.package == ^package and
-              e.content_hash == ^content_hash
+                e.content_hash == ^content_hash
         )
 
       assert length(embeddings_after_third) == 3, "Should have three separate embeddings for three versions"
@@ -332,6 +359,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
       content_hash = Embeddings.content_hash(text)
 
       chunk_file = Path.join(chunks_dir, "chunk_1.json")
+
       chunk_content = %{
         "text" => text,
         "metadata" => %{
@@ -353,6 +381,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
       File.mkdir_p!(chunks_dir)
 
       new_chunk_file = Path.join(chunks_dir, "same_version_different_file.json")
+
       new_chunk_content = %{
         "text" => text,
         "metadata" => %{
@@ -375,7 +404,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
           from e in Embedding,
             where:
               e.package == ^package and
-              e.content_hash == ^content_hash
+                e.content_hash == ^content_hash
         )
 
       assert length(embeddings) == 1, "Expected only one embedding for the same version"
@@ -387,7 +416,10 @@ defmodule HexdocsMcp.EmbeddingsTest do
       assert embedding.end_byte == 299
     end
 
-    test "reuses embeddings across different versions with same content hash", %{test_package: package, chunks_dir: chunks_dir} do
+    test "reuses embeddings across different versions with same content hash", %{
+      test_package: package,
+      chunks_dir: chunks_dir
+    } do
       File.rm_rf!(chunks_dir)
       File.mkdir_p!(chunks_dir)
 
@@ -395,6 +427,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
       content_hash = Embeddings.content_hash(text)
 
       chunk_file = Path.join(chunks_dir, "chunk_1.json")
+
       chunk_content = %{
         "text" => text,
         "metadata" => %{
@@ -428,8 +461,8 @@ defmodule HexdocsMcp.EmbeddingsTest do
           from e in Embedding,
             where:
               e.package == ^package and
-              e.version == ^@default_version and
-              e.content_hash == ^content_hash
+                e.version == ^@default_version and
+                e.content_hash == ^content_hash
         )
 
       refute is_nil(default_embedding)
@@ -440,6 +473,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
       File.mkdir_p!(chunks_dir)
 
       new_chunk_file = Path.join(chunks_dir, "new_version_chunk.json")
+
       new_chunk_content = %{
         "text" => text,
         "metadata" => %{
@@ -455,9 +489,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
 
       File.write!(new_chunk_file, Jason.encode!(new_chunk_content))
 
-      HexdocsMcp.MockOllama
-      |> expect(:init, fn _ -> %{mock: true} end)
-
+      expect(HexdocsMcp.MockOllama, :init, fn _ -> %{mock: true} end)
       {:ok, {1, 0, 1}} = Embeddings.generate(package, new_version, @default_model)
 
       new_embedding =
@@ -465,8 +497,8 @@ defmodule HexdocsMcp.EmbeddingsTest do
           from e in Embedding,
             where:
               e.package == ^package and
-              e.version == ^new_version and
-              e.content_hash == ^content_hash
+                e.version == ^new_version and
+                e.content_hash == ^content_hash
         )
 
       refute is_nil(new_embedding)
@@ -868,6 +900,116 @@ defmodule HexdocsMcp.EmbeddingsTest do
     end
   end
 
+  describe "URL functionality in embeddings" do
+    test "embeddings without URL metadata should have null URLs", %{test_package: package} do
+      {:ok, _} = Embeddings.generate(package, @default_version, @default_model)
+      embeddings = Repo.all(from e in Embedding, where: e.package == ^package)
+
+      for embedding <- embeddings do
+        assert is_nil(embedding.url)
+      end
+    end
+
+    test "embeddings with URL metadata should store URLs", %{test_package: package, chunks_dir: chunks_dir} do
+      File.rm_rf!(chunks_dir)
+      File.mkdir_p!(chunks_dir)
+      create_test_chunks_with_url(chunks_dir, package)
+
+      {:ok, _} = Embeddings.generate(package, @default_version, @default_model)
+
+      embeddings = Repo.all(from e in Embedding, where: e.package == ^package)
+
+      for embedding <- embeddings do
+        assert is_binary(embedding.url)
+        assert String.starts_with?(embedding.url, "https://hexdocs.pm/#{package}/")
+      end
+    end
+
+    test "force re-fetch should add URLs to embeddings", %{test_package: package, chunks_dir: chunks_dir} do
+      {:ok, _} = Embeddings.generate(package, @default_version, @default_model)
+
+      embeddings_without_url = Repo.all(from e in Embedding, where: e.package == ^package)
+
+      for embedding <- embeddings_without_url do
+        assert is_nil(embedding.url)
+      end
+
+      File.rm_rf!(chunks_dir)
+      File.mkdir_p!(chunks_dir)
+      create_test_chunks_with_url(chunks_dir, package)
+
+      {:ok, _} = Embeddings.generate(package, @default_version, @default_model, force: true)
+
+      embeddings_with_url = Repo.all(from e in Embedding, where: e.package == ^package)
+
+      for embedding <- embeddings_with_url do
+        assert is_binary(embedding.url)
+        assert String.starts_with?(embedding.url, "https://hexdocs.pm/#{package}/")
+      end
+    end
+
+    test "URLs should be preserved for specific versions", %{test_package: package, chunks_dir: chunks_dir} do
+      File.rm_rf!(chunks_dir)
+      File.mkdir_p!(chunks_dir)
+      specific_version = "1.2.3"
+
+      for i <- 1..3 do
+        chunk_file = Path.join(chunks_dir, "chunk_#{i}.json")
+        text = "Sample text for chunk #{i} in version #{specific_version}"
+
+        content_hash = Embeddings.content_hash(text)
+
+        chunk_content = %{
+          "text" => text,
+          "metadata" => %{
+            "package" => package,
+            "version" => specific_version,
+            "source_file" => "test_file_#{i}.ex",
+            "source_type" => "docs",
+            "start_byte" => i * 100,
+            "end_byte" => i * 100 + 99,
+            "content_hash" => content_hash,
+            "url" => "https://hexdocs.pm/#{package}/#{specific_version}/test_file_#{i}.html"
+          }
+        }
+
+        File.write!(chunk_file, Jason.encode!(chunk_content))
+      end
+
+      {:ok, _} = Embeddings.generate(package, specific_version, @default_model)
+
+      embeddings = Repo.all(from e in Embedding, where: e.package == ^package and e.version == ^specific_version)
+
+      for embedding <- embeddings do
+        assert is_binary(embedding.url)
+        assert String.starts_with?(embedding.url, "https://hexdocs.pm/#{package}/#{specific_version}/")
+      end
+    end
+
+    test "search results should include URLs when available", %{test_package: package, chunks_dir: chunks_dir} do
+      File.rm_rf!(chunks_dir)
+      File.mkdir_p!(chunks_dir)
+      create_test_chunks_with_url(chunks_dir, package)
+
+      {:ok, _} = Embeddings.generate(package, @default_version, @default_model)
+
+      HexdocsMcp.MockOllama
+      |> expect(:init, fn _ -> %{mock: true} end)
+      |> expect(:embed, fn _client, _opts ->
+        embedding = List.duplicate(0.1, 384)
+        {:ok, %{"embeddings" => [embedding]}}
+      end)
+
+      results = Embeddings.search("test query", package, @default_version, @default_model)
+
+      for result <- results do
+        assert Map.has_key?(result.metadata, :url)
+        assert is_binary(result.metadata.url)
+        assert String.starts_with?(result.metadata.url, "https://hexdocs.pm/#{package}/")
+      end
+    end
+  end
+
   defp create_embeddings_for_search(context) do
     %{test_package: package} = context
 
@@ -876,10 +1018,11 @@ defmodule HexdocsMcp.EmbeddingsTest do
     context
   end
 
-  defp create_test_embedding(package, version) do
+  defp create_test_embedding(package, version, opts \\ []) do
     embedding_vector = List.duplicate(0.1, 384)
     rand_id = :rand.uniform(10_000)
     text = "Test embedding with specific version #{rand_id}"
+    url = opts[:url] || if opts[:with_url], do: "https://hexdocs.pm/#{package}/test_file_#{rand_id}.html"
 
     content_hash = Embeddings.content_hash(text)
 
@@ -893,6 +1036,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
       text_snippet: "Test snippet #{rand_id}...",
       text: text,
       content_hash: content_hash,
+      url: url,
       embedding: SqliteVec.Float32.new(embedding_vector)
     }
 

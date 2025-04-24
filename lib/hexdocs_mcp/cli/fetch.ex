@@ -448,11 +448,22 @@ defmodule HexdocsMcp.CLI.Fetch do
   end
 
   defp build_chunk_metadata(package, version, file_path) do
+    version_str = version || "latest"
+    file_name = Path.basename(file_path)
+
+    url =
+      if version_str == "latest" do
+        "https://hexdocs.pm/#{package}/#{file_name}"
+      else
+        "https://hexdocs.pm/#{package}/#{version_str}/#{file_name}"
+      end
+
     %{
       package: package,
-      version: version || "latest",
+      version: version_str,
       source_file: file_path,
-      source_type: "hexdocs"
+      source_type: "hexdocs",
+      url: url
     }
   end
 
@@ -472,11 +483,13 @@ defmodule HexdocsMcp.CLI.Fetch do
       chunk_filename = "#{clean_path}_chunk_#{chunk_idx}.json"
       chunk_path = Path.join(output_dir, chunk_filename)
 
+      string_metadata = for {key, val} <- metadata, into: %{}, do: {Atom.to_string(key), val}
+
       extended_metadata =
-        Map.merge(metadata, %{
-          start_byte: chunk.start_byte,
-          end_byte: chunk.end_byte,
-          content_hash: content_hash
+        Map.merge(string_metadata, %{
+          "start_byte" => chunk.start_byte,
+          "end_byte" => chunk.end_byte,
+          "content_hash" => content_hash
         })
 
       chunk_data = %{

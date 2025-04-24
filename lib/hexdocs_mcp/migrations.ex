@@ -28,6 +28,7 @@ defmodule HexdocsMcp.Migrations do
         source_type TEXT,
         start_byte INTEGER,
         end_byte INTEGER,
+        url TEXT,
         text_snippet TEXT,
         text TEXT NOT NULL,
         content_hash TEXT NOT NULL,
@@ -49,10 +50,15 @@ defmodule HexdocsMcp.Migrations do
   """
   def update_embeddings_table do
     %{rows: table_info} = Repo.query!("PRAGMA table_info(embeddings)")
-    has_content_hash? = Enum.any?(table_info, &Enum.at(&1, 1) == "content_hash")
+    has_content_hash? = Enum.any?(table_info, &(Enum.at(&1, 1) == "content_hash"))
+    has_url? = Enum.any?(table_info, &(Enum.at(&1, 1) == "url"))
 
     if not has_content_hash? do
       Repo.query!("ALTER TABLE embeddings ADD COLUMN content_hash TEXT NOT NULL DEFAULT ''")
+    end
+
+    if not has_url? do
+      Repo.query!("ALTER TABLE embeddings ADD COLUMN url TEXT")
     end
 
     Repo.query!("CREATE INDEX IF NOT EXISTS idx_embeddings_content_hash ON embeddings(package, version, content_hash)")

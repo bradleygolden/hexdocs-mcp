@@ -21,6 +21,7 @@ defmodule HexdocsMcp.SqlSandbox do
 
     # Use the shared migrations module to create tables
     Enum.each(Migrations.create_embeddings_table(), fn sql -> Repo.query!(sql) end)
+    Migrations.update_embeddings_table()
     :ok
   end
 end
