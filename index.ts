@@ -362,6 +362,7 @@ async function main() {
     // Register tools
     server.tool(
         "search",
+        "Searches the documentation of one or more Elixir Hex packages using semantic vector embeddings. Given a natural language query, returns the most relevant documentation snippets. Requires that embeddings have been generated for the target package(s) using the fetch tool.",
         {
             query: z.string().describe("The semantic search query to find relevant documentation (can be natural language, not just keywords)"),
             packageName: z.string().optional().describe("Optional Hex package name to search within (must be a package that has been fetched)"),
@@ -373,6 +374,7 @@ async function main() {
 
     server.tool(
         "fetch",
+        "Downloads and processes the documentation for a specified Elixir Hex package and version, converting it to markdown, splitting it into semantic chunks, and generating vector embeddings. This enables fast and accurate semantic search with the search tool. Must be run before searching a package for the first time or to update embeddings.",
         {
             packageName: z.string().describe("The Hex package name to fetch (required)"),
             version: z.string().optional().describe("Optional package version, defaults to latest"),
