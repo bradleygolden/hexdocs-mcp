@@ -142,6 +142,31 @@ defmodule HexdocsMcp.CLI.FetchTest do
     refute Embeddings.embeddings_exist?(package, version)
   end
 
+  test "fetching latest after a new release" do
+    package = package()
+    old_version = "1.0.0"
+    new_version = "1.1.0"
+
+    capture_io(fn ->
+      assert :ok = Fetch.main([package, old_version])
+    end)
+
+    assert_embeddings_generated(package, old_version)
+
+    expect(MockDocs, :fetch, fn ^package, "latest" ->
+      hex_docs_path = Path.join([System.tmp_dir!(), "docs", "hexpm", package, new_version])
+      File.mkdir_p!(hex_docs_path)
+      File.write!(Path.join([hex_docs_path, Fixtures.html_filename()]), Fixtures.html())
+      {"Docs fetched to #{hex_docs_path}", 0}
+    end)
+
+    capture_io(fn ->
+      assert :ok = Fetch.main([package])
+    end)
+
+    assert_embeddings_generated(package, new_version)
+  end
+
   defp assert_markdown_files_generated(package, version) do
     package_path = Path.join([HexdocsMcp.Config.data_path(), package])
 
