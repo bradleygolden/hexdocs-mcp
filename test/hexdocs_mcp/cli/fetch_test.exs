@@ -5,6 +5,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
   alias HexdocsMcp.CLI.Fetch
   alias HexdocsMcp.Embeddings
+  alias HexdocsMcp.Fixtures
   alias HexdocsMcp.MockDocs
 
   setup :verify_on_exit!
@@ -142,17 +143,121 @@ defmodule HexdocsMcp.CLI.FetchTest do
     refute Embeddings.embeddings_exist?(package, version)
   end
 
+  test "fetching latest after a new release" do
+    package = package()
+    old_version = "1.0.0"
+    new_version = "1.1.0"
+
+    capture_io(fn ->
+      assert :ok = Fetch.main([package, old_version])
+    end)
+
+    assert_embeddings_generated(package, old_version)
+
+    expect(MockDocs, :get_latest_version, fn ^package ->
+      {:ok, new_version}
+    end)
+
+    expect(MockDocs, :fetch, fn ^package, ^new_version ->
+      hex_docs_path = Path.join([System.tmp_dir!(), "docs", "hexpm", package, new_version])
+      File.mkdir_p!(hex_docs_path)
+      File.write!(Path.join([hex_docs_path, Fixtures.html_filename()]), Fixtures.html())
+      {"Docs fetched to #{hex_docs_path}", 0}
+    end)
+
+    capture_io(fn ->
+      assert :ok = Fetch.main([package])
+    end)
+
+    assert_embeddings_generated(package, new_version)
+  end
+
+  test "fetching latest when API fails falls back to hex docs fetch", %{package: package} do
+    expect(MockDocs, :get_latest_version, fn ^package ->
+      {:error, "Failed to fetch package information: HTTP 404"}
+    end)
+
+    expect(MockDocs, :fetch, fn ^package, "latest" ->
+      hex_docs_path = Path.join([System.tmp_dir!(), "docs", "hexpm", package, "1.2.3"])
+      File.mkdir_p!(hex_docs_path)
+      File.write!(Path.join([hex_docs_path, Fixtures.html_filename()]), Fixtures.html())
+      {"Docs fetched to #{hex_docs_path}", 0}
+    end)
+
+    output =
+      capture_io(fn ->
+        assert :ok = Fetch.main([package])
+      end)
+
+    assert output =~ "Could not determine latest version"
+    assert output =~ "Fetching docs anyway"
+    assert_embeddings_generated(package, "1.2.3")
+  end
+
+  test "fetching latest when API fails and version extraction fails", %{package: package} do
+    expect(MockDocs, :get_latest_version, fn ^package ->
+      {:error, "Network timeout"}
+    end)
+
+    expect(MockDocs, :fetch, fn ^package, "latest" ->
+      hex_docs_path = Path.join([System.tmp_dir!(), "invalid", "path", "structure"])
+      File.mkdir_p!(hex_docs_path)
+      File.write!(Path.join([hex_docs_path, Fixtures.html_filename()]), Fixtures.html())
+      {"Docs fetched to #{hex_docs_path}", 0}
+    end)
+
+    output =
+      capture_io(fn ->
+        assert :ok = Fetch.main([package])
+      end)
+
+    assert output =~ "Could not determine latest version"
+    assert output =~ "Fetching docs anyway"
+    assert Embeddings.embeddings_exist?(package, "latest")
+  end
+
+  test "fetching latest with force flag when embeddings exist", %{package: package} do
+    capture_io(fn ->
+      assert :ok = Fetch.main([package, "1.0.0"])
+    end)
+
+    initial_count = count_embeddings(package, "1.0.0")
+    assert initial_count > 0
+
+    expect(MockDocs, :get_latest_version, fn ^package ->
+      {:ok, "1.0.0"}
+    end)
+
+    expect(MockDocs, :fetch, fn ^package, "1.0.0" ->
+      hex_docs_path = Path.join([System.tmp_dir!(), "docs", "hexpm", package, "1.0.0"])
+      File.mkdir_p!(hex_docs_path)
+      File.write!(Path.join([hex_docs_path, Fixtures.html_filename()]), Fixtures.html())
+      {"Docs fetched to #{hex_docs_path}", 0}
+    end)
+
+    output =
+      capture_io(fn ->
+        assert :ok = Fetch.main([package, "--force"])
+      end)
+
+    assert output =~ "Latest version of #{package} is 1.0.0"
+    assert output =~ "Removed #{initial_count} existing embeddings"
+    assert_embeddings_generated(package, "1.0.0")
+  end
+
   defp assert_markdown_files_generated(package, version) do
     package_path = Path.join([HexdocsMcp.Config.data_path(), package])
+
+    expected_version = if version == "latest", do: "1.0.0", else: version
 
     filename =
       package_path
       |> File.ls!()
-      |> Enum.find(fn filename -> filename == version <> ".md" end)
+      |> Enum.find(fn filename -> filename == expected_version <> ".md" end)
       |> String.split(".md")
       |> List.first()
 
-    assert filename == version
+    assert filename == expected_version
   end
 
   defp assert_chunks_generated(package, _version) do
@@ -171,7 +276,8 @@ defmodule HexdocsMcp.CLI.FetchTest do
   end
 
   defp assert_embeddings_generated(package, version) do
-    assert Embeddings.embeddings_exist?(package, version)
+    expected_version = if version == "latest", do: "1.0.0", else: version
+    assert Embeddings.embeddings_exist?(package, expected_version)
   end
 
   defp count_embeddings(package, version) do

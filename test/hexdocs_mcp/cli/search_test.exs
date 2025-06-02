@@ -212,7 +212,10 @@ defmodule HexdocsMcp.CLI.SearchTest do
       assert is_float(score)
       assert score >= 0 and score <= 1
       assert metadata.package == package
-      assert metadata.version == version
+
+      expected_version = if version == "latest", do: "1.0.0", else: version
+      assert metadata.version == expected_version
+
       assert metadata.source_file
       assert metadata.text_snippet
     end)
