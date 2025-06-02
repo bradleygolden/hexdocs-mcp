@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-01-06
+
 ### Added
 - Added URL field to embedding metadata
   - Allows LLMs to optionally fetch the original documentation URL
@@ -150,7 +152,8 @@ Initial release of HexDocs MCP, providing semantic search capabilities for Hex p
   - Default model: `nomic-embed-text`
   - Support for alternative models like `all-minilm`
 
-[Unreleased]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.3.0...v0.3.1
