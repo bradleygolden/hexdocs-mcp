@@ -207,45 +207,54 @@ defmodule HexdocsMcp.CLI.Fetch do
 
     {docs_path, actual_version} =
       if version == "latest" do
-        path = execute_docs_fetch_quietly(package, version)
-        verify_docs_path!(path)
-        {path, extract_version_from_docs_path(path) || "latest"}
+        case HexdocsMcp.Config.docs_module().get_latest_version(package) do
+          {:ok, latest_version} ->
+            Utils.output_info("Latest version of #{package} is #{latest_version}")
+            path = execute_docs_fetch_quietly(package, latest_version)
+            verify_docs_path!(path)
+            {path, latest_version}
+
+          {:error, error} ->
+            Utils.output_info("Could not determine latest version: #{error}. Fetching docs anyway...")
+            path = execute_docs_fetch_quietly(package, version)
+            verify_docs_path!(path)
+            {path, extract_version_from_docs_path(path) || "latest"}
+        end
       else
         {nil, version}
       end
 
-    final_context = %Context{context | version: actual_version}
+    final_context = %{context | version: actual_version}
 
-    cond do
-      !force? && embeddings_module.embeddings_exist?(package, actual_version) ->
-        Utils.output_info("#{Utils.check()} Embeddings for #{package} #{actual_version} already exist, skipping fetch.")
-        Utils.output_info("  Use --force to re-fetch and update embeddings.")
-        :ok
+    if !force? && embeddings_module.embeddings_exist?(package, actual_version) do
+      Utils.output_info("#{Utils.check()} Embeddings for #{package} #{actual_version} already exist, skipping fetch.")
+      Utils.output_info("  Use --force to re-fetch and update embeddings.")
+      :ok
+    else
+      if force? && embeddings_module.embeddings_exist?(package, actual_version) do
+        {:ok, count} = embeddings_module.delete_embeddings(package, actual_version)
+        Utils.output_info("#{Utils.check()} Removed #{count} existing embeddings for #{package} #{actual_version}.")
+      end
 
-      true ->
-        if force? && embeddings_module.embeddings_exist?(package, actual_version) do
-          {:ok, count} = embeddings_module.delete_embeddings(package, actual_version)
-          Utils.output_info("#{Utils.check()} Removed #{count} existing embeddings for #{package} #{actual_version}.")
-        end
-
-        do_process_docs(final_context, docs_path)
+      do_process_docs(final_context, docs_path)
     end
   end
 
-  defp do_process_docs(context, docs_path \ nil) do
+  defp do_process_docs(context, docs_path) do
     %Context{package: package, version: version, model: model} = context
     ensure_markdown_dir!(package)
 
-    docs_path = case docs_path do
-      nil ->
-        Utils.output_info("Fetching documentation for #{package}#{if version, do: " #{version}", else: ""}...")
-        path = execute_docs_fetch_quietly(package, version)
-        verify_docs_path!(path)
-        path
-      existing ->
-        existing
-    end
+    docs_path =
+      case docs_path do
+        nil ->
+          Utils.output_info("Fetching documentation for #{package}#{if version, do: " #{version}", else: ""}...")
+          path = execute_docs_fetch_quietly(package, version)
+          verify_docs_path!(path)
+          path
 
+        existing ->
+          existing
+      end
 
     verify_docs_path!(docs_path)
 

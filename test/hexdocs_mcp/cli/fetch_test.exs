@@ -5,6 +5,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
   alias HexdocsMcp.CLI.Fetch
   alias HexdocsMcp.Embeddings
+  alias HexdocsMcp.Fixtures
   alias HexdocsMcp.MockDocs
 
   setup :verify_on_exit!
@@ -153,7 +154,11 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
     assert_embeddings_generated(package, old_version)
 
-    expect(MockDocs, :fetch, fn ^package, "latest" ->
+    expect(MockDocs, :get_latest_version, fn ^package ->
+      {:ok, new_version}
+    end)
+
+    expect(MockDocs, :fetch, fn ^package, ^new_version ->
       hex_docs_path = Path.join([System.tmp_dir!(), "docs", "hexpm", package, new_version])
       File.mkdir_p!(hex_docs_path)
       File.write!(Path.join([hex_docs_path, Fixtures.html_filename()]), Fixtures.html())
@@ -170,14 +175,16 @@ defmodule HexdocsMcp.CLI.FetchTest do
   defp assert_markdown_files_generated(package, version) do
     package_path = Path.join([HexdocsMcp.Config.data_path(), package])
 
+    expected_version = if version == "latest", do: "1.0.0", else: version
+
     filename =
       package_path
       |> File.ls!()
-      |> Enum.find(fn filename -> filename == version <> ".md" end)
+      |> Enum.find(fn filename -> filename == expected_version <> ".md" end)
       |> String.split(".md")
       |> List.first()
 
-    assert filename == version
+    assert filename == expected_version
   end
 
   defp assert_chunks_generated(package, _version) do
@@ -196,7 +203,8 @@ defmodule HexdocsMcp.CLI.FetchTest do
   end
 
   defp assert_embeddings_generated(package, version) do
-    assert Embeddings.embeddings_exist?(package, version)
+    expected_version = if version == "latest", do: "1.0.0", else: version
+    assert Embeddings.embeddings_exist?(package, expected_version)
   end
 
   defp count_embeddings(package, version) do

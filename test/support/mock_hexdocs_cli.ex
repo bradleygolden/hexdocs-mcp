@@ -17,4 +17,9 @@ defmodule HexdocsMcp.MockHexdocsCli do
      Docs fetched to #{hex_docs_path}
      """, 0}
   end
+  
+  @impl HexdocsMcp.Behaviours.Docs
+  def get_latest_version(_package) do
+    {:ok, "1.0.0"}
+  end
 end

@@ -11,6 +11,7 @@ end
 defmodule HexdocsMcp.Behaviours.Docs do
   @moduledoc false
   @callback fetch(String.t(), String.t() | nil) :: {String.t(), non_neg_integer()}
+  @callback get_latest_version(String.t()) :: {:ok, String.t()} | {:error, String.t()}
 end
 
 defmodule HexdocsMcp.Behaviours.Embeddings do
