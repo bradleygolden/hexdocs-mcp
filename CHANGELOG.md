@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - To add URLs to existing embeddings:
     - CLI: Run `mix hex.docs.mcp fetch PACKAGE --force`
     - MCP: Ask `Please fetch the latest <PACKAGE> hexdocs with the force option`
+- Enhanced CLAUDE.md with comprehensive architecture documentation ([#9](https://github.com/bradleygolden/hexdocs-mcp/pull/9)) - Thanks @dvic!
+
+### Fixed
+- Fixed latest version detection on fetch ([#7](https://github.com/bradleygolden/hexdocs-mcp/issues/7))
+  - Now correctly detects and fetches the latest version when version is not specified
+  - Uses Hex.pm API for accurate version resolution
+- Fixed postinstall script to handle missing dist directory during initial setup ([#8](https://github.com/bradleygolden/hexdocs-mcp/pull/8)) - Thanks @dvic!
 
 ## [0.4.1]
 
