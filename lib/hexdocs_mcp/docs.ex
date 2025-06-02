@@ -7,9 +7,11 @@ defmodule HexdocsMcp.Docs do
   @impl Docs
   def fetch(package, version) do
     args =
-      if version == "latest",
-        do: ["hex.docs", "fetch", package],
-        else: ["hex.docs", "fetch", package, version]
+      case version do
+        nil -> ["hex.docs", "fetch", package]
+        "latest" -> ["hex.docs", "fetch", package]
+        version -> ["hex.docs", "fetch", package, version]
+      end
 
     result = System.cmd("mix", args, stderr_to_stdout: true)
 
