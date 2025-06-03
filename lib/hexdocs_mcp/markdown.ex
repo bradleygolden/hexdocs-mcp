@@ -10,10 +10,19 @@ defmodule HexdocsMcp.Markdown do
     content
     |> prep_document()
     |> Floki.parse_document!()
-    |> Floki.find("body")
+    |> extract_main_content()
     |> Floki.filter_out(:comment)
     |> remove_non_content_tags()
     |> remove_nav_elements()
+  end
+
+  defp extract_main_content(document) do
+    main_content = Floki.find(document, "main.content, #content, .content-inner, article, [role='main']")
+
+    case main_content do
+      [] -> Floki.find(document, "body")
+      content -> content
+    end
   end
 
   defp prep_document(content) do
@@ -58,26 +67,80 @@ defmodule HexdocsMcp.Markdown do
     Enum.reduce(@non_content_tags, document, &Floki.filter_out(&2, &1))
   end
 
-  @navigation_classes ["footer", "menu", "nav", "sidebar", "aside"]
+  @navigation_classes [
+    "footer",
+    "menu",
+    "nav",
+    "sidebar",
+    "aside",
+    "sidebar-list",
+    "sidebar-list-nav",
+    "section-nav",
+    "api-reference-list",
+    "module-list"
+  ]
+
+  @navigation_ids [
+    "sidebar",
+    "sidebar-menu",
+    "sidebar-list",
+    "sidebar-list-nav",
+    "module-index",
+    "api-reference",
+    "navigation",
+    "nav-menu"
+  ]
 
   defp remove_nav_elements(document) do
     Floki.find_and_update(document, "*", &process_nav_element/1)
   end
 
   defp process_nav_element({tag, attrs} = element) when is_list(attrs) do
-    case List.keyfind(attrs, "class", 0) do
-      {"class", class} -> maybe_delete_nav_element(tag, attrs, class)
-      _ -> element
+    cond do
+      should_delete_by_class?(attrs) && tag != "body" -> :delete
+      should_delete_by_id?(attrs) && tag != "body" -> :delete
+      should_delete_module_listing?(tag, attrs) -> :delete
+      true -> element
     end
   end
 
   defp process_nav_element(element), do: element
 
-  defp maybe_delete_nav_element(tag, attrs, class) do
-    if contains_nav_class?(class) && tag != "body" do
-      :delete
-    else
-      {tag, attrs}
+  defp should_delete_by_class?(attrs) do
+    case List.keyfind(attrs, "class", 0) do
+      {"class", class} -> contains_nav_class?(class)
+      _ -> false
+    end
+  end
+
+  defp should_delete_by_id?(attrs) do
+    case List.keyfind(attrs, "id", 0) do
+      {"id", id} -> id in @navigation_ids
+      _ -> false
+    end
+  end
+
+  defp should_delete_module_listing?(tag, attrs) do
+    # Remove module listing sections that appear on API reference pages
+    # Only when they're specifically module lists, not when they're part of actual documentation
+    case {tag, List.keyfind(attrs, "class", 0), List.keyfind(attrs, "id", 0)} do
+      {"section", {"class", "details-list"}, {"id", "modules"}} ->
+        true
+
+      {"section", {"class", "details-list"}, {"id", "types"}} ->
+        false
+
+      {"section", {"class", "details-list"}, {"id", "summary"}} ->
+        false
+
+      {"section", {"class", class}, _} when tag == "section" ->
+        String.contains?(class, "module-list") || String.contains?(class, "api-reference-list")
+
+      {"div", {"class", class}, _} ->
+        String.contains?(class, "module-list")
+
+      _ ->
+        false
     end
   end
 

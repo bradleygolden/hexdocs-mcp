@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Improved HexDocs HTML parsing to better filter navigation elements
+  - Extracts main content area (`<main>`, `#content`, `.content-inner`, etc.) to focus on documentation
+  - Filters out sidebar navigation by both class and ID attributes
+  - Preserves actual documentation content while removing repetitive navigation
+  - Reduces noise in search results from sidebar elements appearing in embeddings
+
 ## [0.5.0] - 2025-01-06
 
 ### Added
