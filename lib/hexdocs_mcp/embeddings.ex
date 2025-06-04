@@ -314,10 +314,12 @@ defmodule HexdocsMcp.Embeddings do
     * `model` - The Ollama model to use, "nomic-embed-text" is recommended
     * `top_k` - (Optional) Number of results to return, defaults to 3
     * `progress_callback` - (Optional) Function called with progress updates
+    * `all_versions` - (Optional) Include all versions in search, defaults to false
   """
   def search(query, package, version, model, opts \\ []) do
     top_k = opts[:top_k] || @default_top_k
     progress_callback = opts[:progress_callback]
+    all_versions = opts[:all_versions] || false
 
     client = Ollama.init()
 
@@ -328,7 +330,7 @@ defmodule HexdocsMcp.Embeddings do
         if progress_callback, do: progress_callback.(1, 2, :generating)
         if progress_callback, do: progress_callback.(0, 1, :searching)
 
-        results = search_with_vector(query_vector, package, version, top_k)
+        results = search_with_vector(query_vector, package, version, top_k, all_versions)
 
         if progress_callback, do: progress_callback.(1, 1, :searching)
         results
@@ -362,28 +364,55 @@ defmodule HexdocsMcp.Embeddings do
     end
   end
 
-  defp search_with_vector(query_vector, package, version, top_k) do
+  defp search_with_vector(query_vector, package, version, top_k, all_versions) do
     base_query = build_base_query(package, version)
     v = SqliteVec.Float32.new(query_vector)
 
-    results =
-      Repo.all(
-        from e in base_query,
-          order_by: vec_distance_L2(e.embedding, vec_f32(v)),
-          select: %{
-            id: e.id,
-            package: e.package,
-            version: e.version,
-            source_file: e.source_file,
-            text: e.text,
-            text_snippet: e.text_snippet,
-            url: e.url,
-            score: vec_distance_L2(e.embedding, vec_f32(v))
-          },
-          limit: ^top_k
-      )
+    if not all_versions and is_nil(version) do
+      initial_limit = top_k * 10
 
-    format_results(results)
+      raw_results =
+        Repo.all(
+          from e in base_query,
+            order_by: vec_distance_L2(e.embedding, vec_f32(v)),
+            select: %{
+              id: e.id,
+              package: e.package,
+              version: e.version,
+              source_file: e.source_file,
+              text: e.text,
+              text_snippet: e.text_snippet,
+              url: e.url,
+              score: vec_distance_L2(e.embedding, vec_f32(v))
+            },
+            limit: ^initial_limit
+        )
+
+      formatted_results = format_results(raw_results)
+
+      formatted_results
+      |> HexdocsMcp.Version.filter_latest_versions()
+      |> Enum.take(top_k)
+    else
+      results =
+        Repo.all(
+          from e in base_query,
+            order_by: vec_distance_L2(e.embedding, vec_f32(v)),
+            select: %{
+              id: e.id,
+              package: e.package,
+              version: e.version,
+              source_file: e.source_file,
+              text: e.text,
+              text_snippet: e.text_snippet,
+              url: e.url,
+              score: vec_distance_L2(e.embedding, vec_f32(v))
+            },
+            limit: ^top_k
+        )
+
+      format_results(results)
+    end
   end
 
   defp build_base_query(nil, _), do: from(e in Embedding)

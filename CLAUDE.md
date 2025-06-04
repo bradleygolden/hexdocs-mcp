@@ -23,6 +23,7 @@ HexDocs MCP is a project that provides semantic search capabilities for Hex pack
    - `HexdocsMcp.Config` - Centralized configuration and dependency injection
    - `HexdocsMcp.Ollama` - Wrapper for Ollama AI integration
    - `HexdocsMcp.MixDeps` - Parses mix.exs dependencies
+   - `HexdocsMcp.Version` - Semantic version comparison and filtering
 
 3. **CLI Modules**
    - `HexdocsMcp.CLI.Fetch` - Implements fetch command
@@ -37,7 +38,7 @@ HexDocs MCP is a project that provides semantic search capabilities for Hex pack
 3. **Chunking**: Markdown → Semantic chunks (2000 chars, 200 overlap)
 4. **Embedding**: Chunks → 384-dimensional vectors via Ollama
 5. **Storage**: Embeddings → SQLite with vector extension
-6. **Search**: Query → Embedding → Vector similarity search
+6. **Search**: Query → Embedding → Vector similarity search → Version filtering (latest by default)
 
 ### Database Schema
 
@@ -95,15 +96,19 @@ mix hex.docs.mcp fetch --project mix.exs --force
 
 **Search Command**:
 ```bash
-mix hex.docs.mcp search [PACKAGE] [VERSION] [options]
-  --query QUERY   # Search query (required)
-  --model MODEL   # Ollama model (default: nomic-embed-text)
-  --limit LIMIT   # Max results (default: 3)
-  --help, -h      # Show help
+mix hex.docs.mcp search [PACKAGE] [options]
+  --query QUERY       # Search query (required)
+  --model MODEL       # Ollama model (default: nomic-embed-text)
+  --limit LIMIT       # Max results (default: 3)
+  --version VERSION   # Search only in specific version
+  --all-versions      # Include results from all indexed versions (default: latest only)
+  --help, -h          # Show help
 
 # Examples
-mix hex.docs.mcp search --query "how to create channels"
+mix hex.docs.mcp search --query "how to create channels" # Search latest versions
 mix hex.docs.mcp search phoenix --query "configuration options" --limit 10
+mix hex.docs.mcp search phoenix --query "channels" --version 1.7.0
+mix hex.docs.mcp search phoenix --query "channels" --all-versions
 ```
 
 ### Testing

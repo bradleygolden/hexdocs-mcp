@@ -142,15 +142,15 @@ defmodule HexdocsMcp.CLI.SearchTest do
         Search.main(["--help"])
       end)
 
-    assert output =~ "Usage: #{system_command} search [PACKAGE] [VERSION]"
+    assert output =~ "Usage: #{system_command} search [PACKAGE]"
     assert output =~ "Arguments:"
     assert output =~ "PACKAGE    - Hex package name to search in (optional"
-    assert output =~ "VERSION"
     assert output =~ "Options:"
     assert output =~ "--query"
     assert output =~ "--model"
+    assert output =~ "--version VERSION"
+    assert output =~ "--all-versions"
     assert output =~ "Examples:"
-    # Test the new example for searching all packages
     assert output =~ "search --query"
   end
 
@@ -200,6 +200,77 @@ defmodule HexdocsMcp.CLI.SearchTest do
     assert output =~ "Result (score:"
     assert output =~ "File:"
     assert output =~ "Text:"
+  end
+
+  test "searching with --version flag", %{package: package} do
+    query = "how to configure channels"
+    version = "1.0.0"
+
+    capture_io(fn ->
+      assert :ok = Fetch.main([package, "1.0.0"])
+      assert :ok = Fetch.main([package, "2.0.0"])
+    end)
+
+    output =
+      capture_io(fn ->
+        results = Search.main([package, "--query", query, "--version", version])
+        assert_valid_search_results(results, package, version)
+        
+        Enum.each(results, fn result ->
+          assert result.metadata.version == version
+        end)
+      end)
+
+    assert output =~ "Searching for \"#{query}\" in #{package} version #{version}"
+    assert output =~ "Package: #{package}"
+    assert output =~ "Version: #{version}"
+  end
+
+  test "searching with --all-versions flag", %{package: package} do
+    query = "how to configure channels"
+
+    capture_io(fn ->
+      assert :ok = Fetch.main([package, "1.0.0"])
+      assert :ok = Fetch.main([package, "2.0.0"])
+    end)
+
+    output =
+      capture_io(fn ->
+        results = Search.main([package, "--query", query, "--all-versions"])
+        assert is_list(results)
+        assert length(results) > 0
+        
+        versions = results |> Enum.map(& &1.metadata.version) |> Enum.uniq()
+        assert length(versions) > 1
+        assert "1.0.0" in versions
+        assert "2.0.0" in versions
+      end)
+
+    assert output =~ "Searching for \"#{query}\" in #{package} (all versions)"
+    assert output =~ "Package: #{package}"
+    assert output =~ "Version:"
+  end
+
+  test "searching defaults to latest version only", %{package: package} do
+    query = "how to configure channels"
+
+    capture_io(fn ->
+      assert :ok = Fetch.main([package, "1.0.0"])
+      assert :ok = Fetch.main([package, "2.0.0"])
+    end)
+
+    output =
+      capture_io(fn ->
+        results = Search.main([package, "--query", query])
+        assert is_list(results)
+        Enum.each(results, fn result ->
+          assert result.metadata.version == "2.0.0"
+        end)
+      end)
+
+    assert output =~ "Searching for \"#{query}\" in #{package} (latest versions only)"
+    assert output =~ "Package: #{package}"
+    assert output =~ "Version: 2.0.0"
   end
 
   # Helper functions

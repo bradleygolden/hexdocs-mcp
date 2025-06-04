@@ -7,30 +7,32 @@ defmodule HexdocsMcp.CLI.Search do
   alias HexdocsMcp.CLI.Utils
 
   @usage """
-  Usage: [SYSTEM_COMMAND] search [PACKAGE] [VERSION] [options]
+  Usage: [SYSTEM_COMMAND] search [PACKAGE] [options]
 
   Searches in package documentation using semantic embeddings.
 
   Arguments:
     PACKAGE    - Hex package name to search in (optional, searches all packages if not provided)
-    VERSION    - Package version (optional, defaults to latest)
 
   Options:
-    --query QUERY    - Search query (required)
-    --model MODEL    - Ollama model to use for search (default: nomic-embed-text)
-    --limit LIMIT    - Maximum number of results to return (default: 3)
-    --help, -h       - Show this help
+    --query QUERY       - Search query (required)
+    --model MODEL       - Ollama model to use for search (default: nomic-embed-text)
+    --limit LIMIT       - Maximum number of results to return (default: 3)
+    --version VERSION   - Search only in specific version
+    --all-versions      - Include results from all indexed versions (default: latest only)
+    --help, -h          - Show this help
 
   Process:
     1. Looks up existing embeddings for the package(s)
     2. Performs semantic search using the query
-    3. Returns the most relevant results
+    3. By default, returns results only from the latest version of each package
+    4. Returns the most relevant results
 
   Examples:
-    [SYSTEM_COMMAND] search --query "how to create channels" # Search all packages
-    [SYSTEM_COMMAND] search phoenix --query "how to create channels" # Search specific package
-    [SYSTEM_COMMAND] search phoenix 1.7.0 --query "configuration options" # Search specific version
-    [SYSTEM_COMMAND] search phoenix --query "configuration options" --model all-minilm # Use custom model
+    [SYSTEM_COMMAND] search --query "how to create channels" # Search latest versions of all packages
+    [SYSTEM_COMMAND] search phoenix --query "how to create channels" # Search latest version of phoenix
+    [SYSTEM_COMMAND] search phoenix --query "configuration options" --version 1.7.0 # Search specific version
+    [SYSTEM_COMMAND] search phoenix --query "configuration options" --all-versions # Search all versions
     [SYSTEM_COMMAND] search phoenix --query "configuration options" --limit 10 # Return more results
   """
 
@@ -42,6 +44,7 @@ defmodule HexdocsMcp.CLI.Search do
               version: nil,
               model: nil,
               limit: 3,
+              all_versions: false,
               help?: false
   end
 
@@ -60,14 +63,26 @@ defmodule HexdocsMcp.CLI.Search do
   end
 
   defp search(%Context{} = context) do
-    %Context{query: query, package: package, version: version, model: model, limit: limit} =
-      context
+    %Context{
+      query: query,
+      package: package,
+      version: version,
+      model: model,
+      limit: limit,
+      all_versions: all_versions
+    } = context
 
-    package_info = if package, do: "#{package} #{version || "latest"}", else: "all packages"
+    package_info =
+      cond do
+        version -> "#{package || "all packages"} version #{version}"
+        all_versions -> "#{package || "all packages"} (all versions)"
+        true -> "#{package || "all packages"} (latest versions only)"
+      end
+
     Utils.output_info("Searching for \"#{query}\" in #{package_info}...")
 
     progress_callback = create_search_progress_callback()
-    results = perform_search(query, package, version, model, limit, progress_callback)
+    results = perform_search(query, package, version, model, limit, all_versions, progress_callback)
     display_search_results(results, package, version)
     results
   end
@@ -95,13 +110,14 @@ defmodule HexdocsMcp.CLI.Search do
     end
   end
 
-  defp perform_search(query, package, version, model, limit, progress_callback) do
+  defp perform_search(query, package, version, model, limit, all_versions, progress_callback) do
     HexdocsMcp.search_embeddings(
       query,
       package,
       version,
       model,
       top_k: limit,
+      all_versions: all_versions,
       progress_callback: progress_callback
     )
   end
@@ -129,11 +145,12 @@ defmodule HexdocsMcp.CLI.Search do
     Utils.output_info("#{Utils.check()} Found #{length(results)} results:")
 
     Enum.each(results, fn %{score: score, metadata: metadata} ->
-      # Format score to 3 decimal places
       formatted_score = "~.3f" |> :io_lib.format([score]) |> IO.iodata_to_binary()
 
       Utils.output_info("\n#{IO.ANSI.bright()}Result (score: #{formatted_score})#{IO.ANSI.reset()}")
 
+      Utils.output_info("  Package: #{metadata.package}")
+      Utils.output_info("  Version: #{metadata.version}")
       Utils.output_info("  File: #{metadata.source_file}")
 
       if metadata.url, do: Utils.output_info("  URL: #{metadata.url}")
@@ -149,17 +166,21 @@ defmodule HexdocsMcp.CLI.Search do
           q: :query,
           m: :model,
           l: :limit,
-          h: :help
+          h: :help,
+          v: :version
         ],
         strict: [
           query: :string,
           model: :string,
           limit: :integer,
+          version: :string,
+          all_versions: :boolean,
           help: :boolean
         ]
       )
 
-    {package, version} = Utils.parse_package_args(args)
+    {package, position_version} = Utils.parse_package_args(args)
+    version = opts[:version] || position_version
 
     {:ok,
      %Context{
@@ -168,6 +189,7 @@ defmodule HexdocsMcp.CLI.Search do
        version: version,
        model: opts[:model] || HexdocsMcp.Config.default_embedding_model(),
        limit: opts[:limit] || 3,
+       all_versions: opts[:all_versions] || false,
        help?: opts[:help] || false
      }}
   end

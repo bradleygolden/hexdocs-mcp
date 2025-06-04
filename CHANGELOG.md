@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added `Package:` and `Version:` fields to search result output for clear identification
+- Added `--all-versions` flag to search across all indexed versions when needed
+- Added `--version VERSION` flag to search within a specific version only
+
 ### Fixed
+- Fixed search returning duplicate results from multiple versions of the same package
+  - Search now returns results from only the latest version of each package by default
+  - Implemented semantic version comparison to correctly identify latest versions
+  - Significantly reduces noise when searching across packages with multiple indexed versions
 - Improved HexDocs HTML parsing to better filter navigation elements
   - Extracts main content area (`<main>`, `#content`, `.content-inner`, etc.) to focus on documentation
   - Filters out sidebar navigation by both class and ID attributes
