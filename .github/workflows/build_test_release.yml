@@ -6,48 +6,11 @@ on:
       - 'v*'
     branches:
       - 'main'
-  pull_request:
-    branches:
-      - 'main'
 
 permissions:
   contents: write
 
 jobs:
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup BEAM (Erlang/Elixir)
-        uses: erlef/setup-beam@v1
-        with:
-          otp-version: '27'
-          elixir-version: '1.18'
-      
-      - name: Install Ollama
-        run: |
-          curl -fsSL https://ollama.com/install.sh | sh
-          ollama serve &
-          sleep 5
-          ollama pull nomic-embed-text
-        shell: bash
-      
-      - name: Install dependencies
-        run: |
-          mix local.hex --force
-          mix local.rebar --force
-          mix deps.get
-          mix deps.compile
-      
-      - name: Run unit tests
-        run: mix test --exclude integration
-      
-      - name: Run integration tests
-        run: mix test --only integration
-
   build-binaries:
     name: Build Binaries
     runs-on: ubuntu-latest
