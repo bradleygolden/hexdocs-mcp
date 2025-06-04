@@ -39,7 +39,7 @@ defmodule HexdocsMcp.MarkdownTest do
         <body>
           <main class="content">
             <h1>API Reference</h1>
-            <section class="details-list">
+            <section class="details-list" id="modules">
               <div class="summary-row">
                 <a href="Module1.html">Module1</a>
               </div>
