@@ -429,7 +429,7 @@ async function main() {
     // Register tools
     server.tool(
         "semantic_search",
-        "Searches the documentation of one or more Elixir Hex packages using semantic vector embeddings. Given a natural language query, returns the most relevant documentation snippets. Requires that embeddings have been generated for the target package(s) using the fetch_docs tool.",
+        "Searches the documentation of one or more Elixir Hex packages using semantic vector embeddings. Given a natural language query, returns the most relevant documentation snippets. This is unique to hexdocs-mcp and complements TideWave by providing embeddings-based search capabilities that TideWave does not offer. Always available regardless of TideWave status. Requires that embeddings have been generated for the target package(s) using the fetch_docs tool.",
         {
             query: z.string().describe("The semantic search query to find relevant documentation (can be natural language, not just keywords)"),
             packageName: z.string().optional().describe("Optional Hex package name to search within (must be a package that has been fetched)"),
@@ -441,7 +441,7 @@ async function main() {
 
     server.tool(
         "fetch_docs",
-        "Downloads and processes the documentation for a specified Elixir Hex package and version, converting it to markdown, splitting it into semantic chunks, and generating vector embeddings. This enables fast and accurate semantic search with the semantic_search tool. Must be run before searching a package for the first time or to update embeddings.",
+        "Downloads and processes the documentation for a specified Elixir Hex package and version, converting it to markdown, splitting it into semantic chunks, and generating vector embeddings. This enables the unique semantic_search capability that complements TideWave. Always useful regardless of TideWave availability. Must be run before searching a package for the first time or to update embeddings.",
         {
             packageName: z.string().describe("The Hex package name to fetch (required)"),
             version: z.string().optional().describe("Optional package version, defaults to latest"),
@@ -452,7 +452,7 @@ async function main() {
 
     server.tool(
         "hex_search",
-        "Searches for Elixir packages on Hex.pm by name or description. Can search across all packages, within a specific package's versions, or get info for a specific package version. This is useful for discovering new packages or exploring available versions.",
+        "Searches for Elixir packages on Hex.pm by name or description. Can search across all packages, within a specific package's versions, or get info for a specific package version. Note: If TideWave is available in your current Phoenix project, prefer using TideWave's hex search for better project integration. Use this tool when TideWave is not available or for general package discovery outside of a Phoenix project.",
         {
             query: z.string().describe("The search query to find packages (searches in name and description)"),
             packageName: z.string().optional().describe("Optional package name to search within its versions"),
@@ -466,6 +466,8 @@ async function main() {
     server.tool(
         "fulltext_search",
         `Performs full-text search on HexDocs documentation using Typesense search engine. This searches the actual documentation content across all packages on HexDocs.
+
+Note: If TideWave is available in your current Phoenix project, prefer using TideWave's documentation search for better project context. Use this tool when TideWave is not available or for searching packages not in your current project.
 
 Query Syntax:
 - Basic search: "Phoenix.LiveView" (searches for both terms)

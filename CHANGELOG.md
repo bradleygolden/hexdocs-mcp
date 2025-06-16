@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `HexdocsMcp.CLI.Search` → `HexdocsMcp.CLI.SemanticSearch`
   - `HexdocsMcp.CLI.Fetch` → `HexdocsMcp.CLI.FetchDocs`
 - Updated all references in documentation, tests, and workflows
+- Enhanced tool descriptions to guide AI behavior when used alongside TideWave
+  - hex_search and fulltext_search now mention preferring TideWave when available
+  - semantic_search and fetch_docs emphasize their unique value that complements TideWave
 
 ## [0.6.0]
 
