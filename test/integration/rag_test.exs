@@ -1,7 +1,7 @@
 defmodule HexdocsMcp.RagTest do
   use HexdocsMcp.IntegrationCase
 
-  alias HexdocsMcp.CLI.Fetch
+  alias HexdocsMcp.CLI.FetchDocs
   alias HexdocsMcp.Embeddings
   alias HexdocsMcp.Embeddings.Embedding
   alias HexdocsMcp.Markdown
@@ -251,7 +251,7 @@ defmodule HexdocsMcp.RagTest do
       Repo.delete_all(from e in Embedding, where: e.package == ^package)
 
       capture_io(fn ->
-        Fetch.main([package, "--force", "--model", @default_model])
+        FetchDocs.main([package, "--force", "--model", @default_model])
       end)
 
       jason_embeddings = Repo.all(from e in Embedding, where: e.package == ^package)
@@ -285,7 +285,7 @@ defmodule HexdocsMcp.RagTest do
         Repo.delete_all(from e in Embedding, where: e.package == ^package)
 
         capture_io(fn ->
-          Fetch.main([package, "--force", "--model", @default_model])
+          FetchDocs.main([package, "--force", "--model", @default_model])
         end)
       end
 

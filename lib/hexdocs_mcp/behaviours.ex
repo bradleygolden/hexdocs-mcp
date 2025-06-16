@@ -1,9 +1,9 @@
-defmodule HexdocsMcp.Behaviours.CLI.Fetch do
+defmodule HexdocsMcp.Behaviours.CLI.FetchDocs do
   @moduledoc false
   @callback main(list) :: :ok | :error
 end
 
-defmodule HexdocsMcp.Behaviours.CLI.Search do
+defmodule HexdocsMcp.Behaviours.CLI.SemanticSearch do
   @moduledoc false
   @callback main(list) :: :ok | :error
 end
@@ -41,4 +41,16 @@ end
 defmodule HexdocsMcp.Behaviours.MixDeps do
   @moduledoc false
   @callback read_deps(String.t()) :: [{String.t(), String.t() | nil}]
+end
+
+defmodule HexdocsMcp.Behaviours.HexSearch do
+  @moduledoc false
+  @callback search_packages(query :: String.t(), opts :: Keyword.t()) ::
+              {:ok, list(map())} | {:error, String.t()}
+end
+
+defmodule HexdocsMcp.Behaviours.FulltextSearch do
+  @moduledoc false
+  @callback search(query :: String.t(), opts :: Keyword.t()) ::
+              {:ok, list(map()), map()} | {:error, String.t()}
 end

@@ -31,7 +31,7 @@ Add this to your client's MCP json config:
 }
 ```
 
-This command will automatically download the elixir binaries to both fetch and search documentation. While the server handles downloading the binaries, you still need Elixir and Mix installed on your system for the HexDocs fetching functionality to work properly.
+This command will automatically download the elixir binaries to both fetch_docs and search documentation. While the server handles downloading the binaries, you still need Elixir and Mix installed on your system for the HexDocs fetching functionality to work properly.
 
 #### Smithery
 
@@ -139,38 +139,38 @@ The SQLite database for vector storage and retrieval is created automatically wh
 Fetch documentation, process, and generate embeddings for a package:
 
 ```bash
-mix hex.docs.mcp fetch phoenix
+mix hex.docs.mcp fetch_docs phoenix
 ```
 
 Fetch documentation for a specific version:
 
 ```bash
-mix hex.docs.mcp fetch phoenix 1.5.9
+mix hex.docs.mcp fetch_docs phoenix 1.5.9
 ```
 
 Use a specific embedding model when fetching:
 
 ```bash
-mix hex.docs.mcp fetch phoenix --model all-minilm
+mix hex.docs.mcp fetch_docs phoenix --model all-minilm
 ```
 
 Fetch documentation for a package using the version from your project:
 
 ```bash
-mix hex.docs.mcp fetch phoenix --project path/to/mix.exs
+mix hex.docs.mcp fetch_docs phoenix --project path/to/mix.exs
 ```
 
 Configure project paths to avoid specifying them every time:
 
 ```bash
 export HEXDOCS_MCP_MIX_PROJECT_PATHS="/path/to/project1/mix.exs,/path/to/project2/mix.exs"
-mix hex.docs.mcp fetch phoenix  # Will use the first path from HEXDOCS_MCP_MIX_PROJECT_PATHS
+mix hex.docs.mcp fetch_docs phoenix  # Will use the first path from HEXDOCS_MCP_MIX_PROJECT_PATHS
 ```
 
 Search in the existing embeddings:
 
 ```bash
-mix hex.docs.mcp search phoenix --query "channels"
+mix hex.docs.mcp semantic_search phoenix --query "channels"
 ```
 
 ## Acknowledgements

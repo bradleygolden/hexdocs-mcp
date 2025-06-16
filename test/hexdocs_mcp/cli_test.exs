@@ -25,20 +25,20 @@ defmodule HexdocsMcp.CLITest do
            end) =~ "Usage: #{system_command} COMMAND [options]"
   end
 
-  test "fetch initializes the database" do
-    expect(HexdocsMcp.MockFetch, :main, fn _ -> :ok end)
+  test "fetch_docs initializes the database" do
+    expect(HexdocsMcp.MockFetchDocs, :main, fn _ -> :ok end)
 
     capture_io(fn ->
-      CLI.main(["fetch", "test"])
+      CLI.main(["fetch_docs", "test"])
       assert Repo.all(Embedding)
     end)
   end
 
-  test "search initializes the database" do
-    expect(HexdocsMcp.MockSearch, :main, fn _ -> :ok end)
+  test "semantic_search initializes the database" do
+    expect(HexdocsMcp.MockSemanticSearch, :main, fn _ -> :ok end)
 
     capture_io(fn ->
-      CLI.main(["search"])
+      CLI.main(["semantic_search"])
       assert Repo.all(Embedding)
     end)
   end

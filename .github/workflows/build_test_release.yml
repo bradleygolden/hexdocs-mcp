@@ -274,56 +274,84 @@ jobs:
         run: ./${{ matrix.binary }} --help
         shell: bash
       
-      - name: Test fetch command help
-        run: ./${{ matrix.binary }} fetch --help
+      - name: Test fetch_docs command help
+        run: ./${{ matrix.binary }} fetch_docs --help
         shell: bash
       
-      - name: Test search command help
-        run: ./${{ matrix.binary }} search --help
+      - name: Test semantic_search command help
+        run: ./${{ matrix.binary }} semantic_search --help
         shell: bash
       
-      - name: Test fetch specific package
-        run: ./${{ matrix.binary }} fetch nimble_parsec
+      - name: Test hex_search command help
+        run: ./${{ matrix.binary }} hex_search --help
         shell: bash
       
-      - name: Test fetch specific package with version
-        run: ./${{ matrix.binary }} fetch nimble_parsec 1.4.0
+      - name: Test fulltext_search command help
+        run: ./${{ matrix.binary }} fulltext_search --help
         shell: bash
       
-      - name: Test fetch with custom model
-        run: ./${{ matrix.binary }} fetch jason --model nomic-embed-text
+      - name: Test fetch_docs specific package
+        run: ./${{ matrix.binary }} fetch_docs nimble_parsec
         shell: bash
       
-      - name: Test fetch with force option
-        run: ./${{ matrix.binary }} fetch nimble_parsec --force
+      - name: Test fetch_docs specific package with version
+        run: ./${{ matrix.binary }} fetch_docs nimble_parsec 1.4.0
         shell: bash
       
-      - name: Test fetch from project
-        run: ./${{ matrix.binary }} fetch --project test_project/mix.exs
+      - name: Test fetch_docs with custom model
+        run: ./${{ matrix.binary }} fetch_docs jason --model nomic-embed-text
         shell: bash
       
-      - name: Test fetch specific package from project
-        run: ./${{ matrix.binary }} fetch nimble_parsec --project test_project/mix.exs
+      - name: Test fetch_docs with force option
+        run: ./${{ matrix.binary }} fetch_docs nimble_parsec --force
         shell: bash
       
-      - name: Test search with query
-        run: ./${{ matrix.binary }} search -q "what is nimble_parsec?"
+      - name: Test fetch_docs from project
+        run: ./${{ matrix.binary }} fetch_docs --project test_project/mix.exs
         shell: bash
       
-      - name: Test search in specific package
-        run: ./${{ matrix.binary }} search nimble_parsec -q "how to define a parser"
+      - name: Test fetch_docs specific package from project
+        run: ./${{ matrix.binary }} fetch_docs nimble_parsec --project test_project/mix.exs
         shell: bash
       
-      - name: Test search in specific package version
-        run: ./${{ matrix.binary }} search nimble_parsec 1.4.0 -q "how to use combinators"
+      - name: Test semantic_search with query
+        run: ./${{ matrix.binary }} semantic_search -q "what is nimble_parsec?"
         shell: bash
       
-      - name: Test search with custom model
-        run: ./${{ matrix.binary }} search nimble_parsec -q "parser configuration" --model nomic-embed-text
+      - name: Test semantic_search in specific package
+        run: ./${{ matrix.binary }} semantic_search nimble_parsec -q "how to define a parser"
         shell: bash
       
-      - name: Test search with custom limit
-        run: ./${{ matrix.binary }} search nimble_parsec -q "nimble parser" --limit 5
+      - name: Test semantic_search in specific package version
+        run: ./${{ matrix.binary }} semantic_search nimble_parsec 1.4.0 -q "how to use combinators"
+        shell: bash
+      
+      - name: Test semantic_search with custom model
+        run: ./${{ matrix.binary }} semantic_search nimble_parsec -q "parser configuration" --model nomic-embed-text
+        shell: bash
+      
+      - name: Test semantic_search with custom limit
+        run: ./${{ matrix.binary }} semantic_search nimble_parsec -q "nimble parser" --limit 5
+        shell: bash
+      
+      - name: Test hex_search for packages
+        run: ./${{ matrix.binary }} hex_search --query "parser" --limit 3
+        shell: bash
+      
+      - name: Test hex_search within package versions
+        run: ./${{ matrix.binary }} hex_search nimble_parsec --query "1." --limit 3
+        shell: bash
+      
+      - name: Test hex_search specific version
+        run: ./${{ matrix.binary }} hex_search nimble_parsec 1.4.0 --query "info"
+        shell: bash
+      
+      - name: Test fulltext_search across all packages
+        run: ./${{ matrix.binary }} fulltext_search --query "parser" --limit 3
+        shell: bash
+      
+      - name: Test fulltext_search within package
+        run: ./${{ matrix.binary }} fulltext_search nimble_parsec --query "combinator" --limit 3
         shell: bash
         
       - name: Test invalid command handling

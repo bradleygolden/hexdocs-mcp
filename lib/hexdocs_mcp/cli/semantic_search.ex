@@ -1,13 +1,15 @@
-defmodule HexdocsMcp.CLI.Search do
+defmodule HexdocsMcp.CLI.SemanticSearch do
   @moduledoc """
-  Functions for searching through Hex documentation using embeddings.
+  Functions for searching through Hex documentation using semantic embeddings.
   """
+
+  @behaviour HexdocsMcp.Behaviours.CLI.SemanticSearch
 
   alias HexdocsMcp.CLI.Progress
   alias HexdocsMcp.CLI.Utils
 
   @usage """
-  Usage: [SYSTEM_COMMAND] search [PACKAGE] [options]
+  Usage: [SYSTEM_COMMAND] semantic_search [PACKAGE] [options]
 
   Searches in package documentation using semantic embeddings.
 
@@ -29,11 +31,11 @@ defmodule HexdocsMcp.CLI.Search do
     4. Returns the most relevant results
 
   Examples:
-    [SYSTEM_COMMAND] search --query "how to create channels" # Search latest versions of all packages
-    [SYSTEM_COMMAND] search phoenix --query "how to create channels" # Search latest version of phoenix
-    [SYSTEM_COMMAND] search phoenix --query "configuration options" --version 1.7.0 # Search specific version
-    [SYSTEM_COMMAND] search phoenix --query "configuration options" --all-versions # Search all versions
-    [SYSTEM_COMMAND] search phoenix --query "configuration options" --limit 10 # Return more results
+    [SYSTEM_COMMAND] semantic_search --query "how to create channels" # Search latest versions of all packages
+    [SYSTEM_COMMAND] semantic_search phoenix --query "how to create channels" # Search latest version of phoenix
+    [SYSTEM_COMMAND] semantic_search phoenix --query "configuration options" --version 1.7.0 # Search specific version
+    [SYSTEM_COMMAND] semantic_search phoenix --query "configuration options" --all-versions # Search all versions
+    [SYSTEM_COMMAND] semantic_search phoenix --query "configuration options" --limit 10 # Return more results
   """
 
   defmodule Context do
@@ -125,7 +127,7 @@ defmodule HexdocsMcp.CLI.Search do
   defp display_search_results([], package, version) do
     fetch_cmd =
       if package do
-        cmd = "[SYSTEM_COMMAND] fetch #{package} #{version}"
+        cmd = "[SYSTEM_COMMAND] fetch_docs #{package} #{version}"
         cmd = String.replace(cmd, "[SYSTEM_COMMAND]", HexdocsMcp.Config.system_command())
         "\n  #{cmd}"
       else

@@ -1,10 +1,10 @@
-defmodule HexdocsMcp.CLI.SearchTest do
+defmodule HexdocsMcp.CLI.SemanticSearchTest do
   use HexdocsMcp.DataCase, async: false
 
   import Mox
 
-  alias HexdocsMcp.CLI.Fetch
-  alias HexdocsMcp.CLI.Search
+  alias HexdocsMcp.CLI.FetchDocs
+  alias HexdocsMcp.CLI.SemanticSearch
 
   setup :verify_on_exit!
 
@@ -17,12 +17,12 @@ defmodule HexdocsMcp.CLI.SearchTest do
     query = "how to configure channels"
 
     capture_io(fn ->
-      assert :ok = Fetch.main([package, version])
+      assert :ok = FetchDocs.main([package, version])
     end)
 
     output =
       capture_io(fn ->
-        results = Search.main([package, version, "--query", query])
+        results = SemanticSearch.main([package, version, "--query", query])
         assert_valid_search_results(results, package, version)
       end)
 
@@ -38,12 +38,12 @@ defmodule HexdocsMcp.CLI.SearchTest do
     version = "latest"
 
     capture_io(fn ->
-      assert :ok = Fetch.main([package])
+      assert :ok = FetchDocs.main([package])
     end)
 
     output =
       capture_io(fn ->
-        results = Search.main([package, "--query", query])
+        results = SemanticSearch.main([package, "--query", query])
         assert_valid_search_results(results, package, version)
       end)
 
@@ -60,12 +60,12 @@ defmodule HexdocsMcp.CLI.SearchTest do
     version = "latest"
 
     capture_io(fn ->
-      assert :ok = Fetch.main([package])
+      assert :ok = FetchDocs.main([package])
     end)
 
     output =
       capture_io(fn ->
-        results = Search.main(["--query", query])
+        results = SemanticSearch.main(["--query", query])
         # Results should come from all packages, but in this test we only have one package
         assert_valid_search_results(results, package, version)
       end)
@@ -82,12 +82,12 @@ defmodule HexdocsMcp.CLI.SearchTest do
     custom_model = "all-minilm"
 
     capture_io(fn ->
-      assert :ok = Fetch.main([package, version, "--model", custom_model])
+      assert :ok = FetchDocs.main([package, version, "--model", custom_model])
     end)
 
     output =
       capture_io(fn ->
-        results = Search.main([package, version, "--query", query, "--model", custom_model])
+        results = SemanticSearch.main([package, version, "--query", query, "--model", custom_model])
         assert_valid_search_results(results, package, version)
       end)
 
@@ -107,14 +107,14 @@ defmodule HexdocsMcp.CLI.SearchTest do
 
     output =
       capture_io(fn ->
-        results = Search.main([package, version, "--query", query])
+        results = SemanticSearch.main([package, version, "--query", query])
         assert results == []
       end)
 
     # Verify the output contains instructions for generating embeddings
     assert output =~ "No results found"
     assert output =~ "Make sure you've generated embeddings"
-    assert output =~ "#{system_command} fetch #{package} #{version}"
+    assert output =~ "#{system_command} fetch_docs #{package} #{version}"
   end
 
   test "searching when no embeddings exist and no package specified" do
@@ -125,7 +125,7 @@ defmodule HexdocsMcp.CLI.SearchTest do
 
     output =
       capture_io(fn ->
-        results = Search.main(["--query", query])
+        results = SemanticSearch.main(["--query", query])
         assert results == []
       end)
 
@@ -139,10 +139,10 @@ defmodule HexdocsMcp.CLI.SearchTest do
   test "searching with help flag", %{system_command: system_command} do
     output =
       capture_io(fn ->
-        Search.main(["--help"])
+        SemanticSearch.main(["--help"])
       end)
 
-    assert output =~ "Usage: #{system_command} search [PACKAGE]"
+    assert output =~ "Usage: #{system_command} semantic_search [PACKAGE]"
     assert output =~ "Arguments:"
     assert output =~ "PACKAGE    - Hex package name to search in (optional"
     assert output =~ "Options:"
@@ -157,14 +157,14 @@ defmodule HexdocsMcp.CLI.SearchTest do
   test "searching with invalid arguments" do
     output =
       capture_io(fn ->
-        assert [] = Search.main([])
+        assert [] = SemanticSearch.main([])
       end)
 
     assert output =~ "No results found"
 
     output =
       capture_io(fn ->
-        assert [] = Search.main(["phoenix"])
+        assert [] = SemanticSearch.main(["phoenix"])
       end)
 
     assert output =~ "No results found"
@@ -174,7 +174,7 @@ defmodule HexdocsMcp.CLI.SearchTest do
 
     output =
       capture_io(fn ->
-        Search.main([package, "--query", query])
+        SemanticSearch.main([package, "--query", query])
       end)
 
     assert output =~ "No results found"
@@ -185,12 +185,12 @@ defmodule HexdocsMcp.CLI.SearchTest do
     limit = 5
 
     capture_io(fn ->
-      assert :ok = Fetch.main([package, version])
+      assert :ok = FetchDocs.main([package, version])
     end)
 
     output =
       capture_io(fn ->
-        results = Search.main([package, version, "--query", query, "--limit", "#{limit}"])
+        results = SemanticSearch.main([package, version, "--query", query, "--limit", "#{limit}"])
         assert_valid_search_results(results, package, version)
         assert length(results) <= limit
       end)
@@ -207,15 +207,15 @@ defmodule HexdocsMcp.CLI.SearchTest do
     version = "1.0.0"
 
     capture_io(fn ->
-      assert :ok = Fetch.main([package, "1.0.0"])
-      assert :ok = Fetch.main([package, "2.0.0"])
+      assert :ok = FetchDocs.main([package, "1.0.0"])
+      assert :ok = FetchDocs.main([package, "2.0.0"])
     end)
 
     output =
       capture_io(fn ->
-        results = Search.main([package, "--query", query, "--version", version])
+        results = SemanticSearch.main([package, "--query", query, "--version", version])
         assert_valid_search_results(results, package, version)
-        
+
         Enum.each(results, fn result ->
           assert result.metadata.version == version
         end)
@@ -230,16 +230,16 @@ defmodule HexdocsMcp.CLI.SearchTest do
     query = "how to configure channels"
 
     capture_io(fn ->
-      assert :ok = Fetch.main([package, "1.0.0"])
-      assert :ok = Fetch.main([package, "2.0.0"])
+      assert :ok = FetchDocs.main([package, "1.0.0"])
+      assert :ok = FetchDocs.main([package, "2.0.0"])
     end)
 
     output =
       capture_io(fn ->
-        results = Search.main([package, "--query", query, "--all-versions"])
+        results = SemanticSearch.main([package, "--query", query, "--all-versions"])
         assert is_list(results)
         assert length(results) > 0
-        
+
         versions = results |> Enum.map(& &1.metadata.version) |> Enum.uniq()
         assert length(versions) > 1
         assert "1.0.0" in versions
@@ -255,14 +255,15 @@ defmodule HexdocsMcp.CLI.SearchTest do
     query = "how to configure channels"
 
     capture_io(fn ->
-      assert :ok = Fetch.main([package, "1.0.0"])
-      assert :ok = Fetch.main([package, "2.0.0"])
+      assert :ok = FetchDocs.main([package, "1.0.0"])
+      assert :ok = FetchDocs.main([package, "2.0.0"])
     end)
 
     output =
       capture_io(fn ->
-        results = Search.main([package, "--query", query])
+        results = SemanticSearch.main([package, "--query", query])
         assert is_list(results)
+
         Enum.each(results, fn result ->
           assert result.metadata.version == "2.0.0"
         end)

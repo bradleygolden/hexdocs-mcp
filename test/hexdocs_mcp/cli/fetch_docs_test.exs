@@ -1,9 +1,9 @@
-defmodule HexdocsMcp.CLI.FetchTest do
+defmodule HexdocsMcp.CLI.FetchDocsTest do
   use HexdocsMcp.DataCase, async: false
 
   import Mox
 
-  alias HexdocsMcp.CLI.Fetch
+  alias HexdocsMcp.CLI.FetchDocs
   alias HexdocsMcp.Embeddings
   alias HexdocsMcp.Fixtures
   alias HexdocsMcp.MockDocs
@@ -17,7 +17,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
   test "fetching with package and version", %{package: package, version: version} do
     capture_io(fn ->
-      assert :ok = Fetch.main([package, version])
+      assert :ok = FetchDocs.main([package, version])
     end)
 
     assert_markdown_files_generated(package, version)
@@ -29,7 +29,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
     version = "latest"
 
     capture_io(fn ->
-      assert :ok = Fetch.main([package])
+      assert :ok = FetchDocs.main([package])
     end)
 
     assert_markdown_files_generated(package, version)
@@ -39,12 +39,12 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
   test "fetching when embeddings already exist", %{package: package, version: version} do
     capture_io(fn ->
-      assert :ok = Fetch.main([package, version])
+      assert :ok = FetchDocs.main([package, version])
     end)
 
     output =
       capture_io(fn ->
-        assert :ok = Fetch.main([package, version])
+        assert :ok = FetchDocs.main([package, version])
       end)
 
     assert output =~ "already exist"
@@ -53,7 +53,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
   test "fetching with force flag when embeddings exist", %{package: package, version: version} do
     capture_io(fn ->
-      assert :ok = Fetch.main([package, version])
+      assert :ok = FetchDocs.main([package, version])
     end)
 
     initial_count = count_embeddings(package, version)
@@ -61,7 +61,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
     output =
       capture_io(fn ->
-        assert :ok = Fetch.main([package, version, "--force"])
+        assert :ok = FetchDocs.main([package, version, "--force"])
       end)
 
     assert output =~ "Removed #{initial_count} existing embeddings"
@@ -78,7 +78,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
     output =
       capture_io(fn ->
-        assert :ok = Fetch.main([package, version, "--model", custom_model])
+        assert :ok = FetchDocs.main([package, version, "--model", custom_model])
       end)
 
     assert output =~ "using #{custom_model}"
@@ -91,10 +91,10 @@ defmodule HexdocsMcp.CLI.FetchTest do
   test "fetching with help flag", %{system_command: system_command} do
     output =
       capture_io(fn ->
-        assert :ok = Fetch.main(["--help"])
+        assert :ok = FetchDocs.main(["--help"])
       end)
 
-    assert output =~ "Usage: #{system_command} fetch PACKAGE [VERSION]"
+    assert output =~ "Usage: #{system_command} fetch_docs PACKAGE [VERSION]"
     assert output =~ "Arguments:"
     assert output =~ "PACKAGE"
     assert output =~ "VERSION"
@@ -113,18 +113,18 @@ defmodule HexdocsMcp.CLI.FetchTest do
     end)
 
     capture_io(:stderr, fn ->
-      assert {:error, message} = Fetch.main([])
+      assert {:error, message} = FetchDocs.main([])
       assert message =~ "Invalid arguments: must specify either PACKAGE or --project PATH"
     end)
 
     capture_io(:stderr, fn ->
-      assert {:error, message} = Fetch.main(["--model", "test"])
+      assert {:error, message} = FetchDocs.main(["--model", "test"])
       assert message =~ "Invalid arguments: must specify either PACKAGE or --project PATH"
     end)
 
     capture_io(fn ->
       assert_raise RuntimeError, "Failed to fetch docs", fn ->
-        Fetch.main([package])
+        FetchDocs.main([package])
       end
     end)
   end
@@ -136,7 +136,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
     capture_io(fn ->
       assert_raise RuntimeError, "Failed to fetch docs", fn ->
-        Fetch.main([package, version])
+        FetchDocs.main([package, version])
       end
     end)
 
@@ -149,7 +149,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
     new_version = "1.1.0"
 
     capture_io(fn ->
-      assert :ok = Fetch.main([package, old_version])
+      assert :ok = FetchDocs.main([package, old_version])
     end)
 
     assert_embeddings_generated(package, old_version)
@@ -166,7 +166,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
     end)
 
     capture_io(fn ->
-      assert :ok = Fetch.main([package])
+      assert :ok = FetchDocs.main([package])
     end)
 
     assert_embeddings_generated(package, new_version)
@@ -186,7 +186,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
     output =
       capture_io(fn ->
-        assert :ok = Fetch.main([package])
+        assert :ok = FetchDocs.main([package])
       end)
 
     assert output =~ "Could not determine latest version"
@@ -208,7 +208,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
     output =
       capture_io(fn ->
-        assert :ok = Fetch.main([package])
+        assert :ok = FetchDocs.main([package])
       end)
 
     assert output =~ "Could not determine latest version"
@@ -218,7 +218,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
   test "fetching latest with force flag when embeddings exist", %{package: package} do
     capture_io(fn ->
-      assert :ok = Fetch.main([package, "1.0.0"])
+      assert :ok = FetchDocs.main([package, "1.0.0"])
     end)
 
     initial_count = count_embeddings(package, "1.0.0")
@@ -237,7 +237,7 @@ defmodule HexdocsMcp.CLI.FetchTest do
 
     output =
       capture_io(fn ->
-        assert :ok = Fetch.main([package, "--force"])
+        assert :ok = FetchDocs.main([package, "--force"])
       end)
 
     assert output =~ "Latest version of #{package} is 1.0.0"

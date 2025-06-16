@@ -285,14 +285,14 @@ async function verifyChecksum(filePath: string, checksumFile: string): Promise<b
 }
 
 // Command handlers
-async function handleSearch(args: {
+async function handleSemanticSearch(args: {
     query: string;
     packageName?: string;
     version?: string;
     limit?: number;
 }) {
     const binaryPath = await getBinaryPath();
-    const cliArgs = ['search'];
+    const cliArgs = ['semantic_search'];
 
     if (args.packageName) {
         cliArgs.push(args.packageName);
@@ -322,7 +322,7 @@ async function handleFetch(args: {
     force?: boolean;
 }) {
     const binaryPath = await getBinaryPath();
-    const cliArgs = ['fetch', args.packageName];
+    const cliArgs = ['fetch_docs', args.packageName];
 
     if (args.version) {
         cliArgs.push(args.version);
@@ -337,6 +337,73 @@ async function handleFetch(args: {
         return { content: [{ type: "text" as const, text: stdout }] };
     } catch (error) {
         throw new Error(`Fetch failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
+async function handleHexSearch(args: {
+    query: string;
+    packageName?: string;
+    version?: string;
+    sort?: string;
+    limit?: number;
+}) {
+    const binaryPath = await getBinaryPath();
+    const cliArgs = ['hex_search'];
+    
+    if (args.packageName) {
+        cliArgs.push(args.packageName);
+    }
+    
+    if (args.version) {
+        cliArgs.push(args.version);
+    }
+    
+    cliArgs.push('--query', args.query);
+
+    if (args.sort) {
+        cliArgs.push('--sort', args.sort);
+    }
+
+    if (args.limit) {
+        cliArgs.push('--limit', args.limit.toString());
+    }
+
+    try {
+        const { stdout } = await execFileAsync(binaryPath, cliArgs);
+        return { content: [{ type: "text" as const, text: stdout }] };
+    } catch (error) {
+        throw new Error(`Hex search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
+async function handleFulltextSearch(args: {
+    query: string;
+    packageName?: string;
+    version?: string;
+    limit?: number;
+}) {
+    const binaryPath = await getBinaryPath();
+    const cliArgs = ['fulltext_search'];
+    
+    if (args.packageName) {
+        cliArgs.push(args.packageName);
+    }
+    
+    if (args.version) {
+        cliArgs.push(args.version);
+    }
+    
+    cliArgs.push('--query', args.query);
+
+    if (args.limit) {
+        cliArgs.push('--limit', args.limit.toString());
+    }
+
+    try {
+        const { stdout } = await execFileAsync(binaryPath, cliArgs);
+        return { content: [{ type: "text" as const, text: stdout }] };
+    } catch (error) {
+        throw new Error(`Fulltext search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
@@ -355,32 +422,78 @@ async function main() {
     console.error("Initializing MCP server...");
     const server = new McpServer({
         name: "HexdocsMCP",
-        version: "0.4.1",
+        version: "0.6.0",
         description: "MCP server for searching Elixir Hex package documentation using embeddings"
     });
 
     // Register tools
     server.tool(
-        "search",
-        "Searches the documentation of one or more Elixir Hex packages using semantic vector embeddings. Given a natural language query, returns the most relevant documentation snippets. Requires that embeddings have been generated for the target package(s) using the fetch tool.",
+        "semantic_search",
+        "Searches the documentation of one or more Elixir Hex packages using semantic vector embeddings. Given a natural language query, returns the most relevant documentation snippets. Requires that embeddings have been generated for the target package(s) using the fetch_docs tool.",
         {
             query: z.string().describe("The semantic search query to find relevant documentation (can be natural language, not just keywords)"),
             packageName: z.string().optional().describe("Optional Hex package name to search within (must be a package that has been fetched)"),
             version: z.string().optional().describe("Optional specific package version to search within, defaults to latest fetched version"),
             limit: z.number().optional().default(5).describe("Maximum number of results to return (default: 5, increase for more comprehensive results)")
         },
-        handleSearch
+        handleSemanticSearch
     );
 
     server.tool(
-        "fetch",
-        "Downloads and processes the documentation for a specified Elixir Hex package and version, converting it to markdown, splitting it into semantic chunks, and generating vector embeddings. This enables fast and accurate semantic search with the search tool. Must be run before searching a package for the first time or to update embeddings.",
+        "fetch_docs",
+        "Downloads and processes the documentation for a specified Elixir Hex package and version, converting it to markdown, splitting it into semantic chunks, and generating vector embeddings. This enables fast and accurate semantic search with the semantic_search tool. Must be run before searching a package for the first time or to update embeddings.",
         {
             packageName: z.string().describe("The Hex package name to fetch (required)"),
             version: z.string().optional().describe("Optional package version, defaults to latest"),
             force: z.boolean().optional().default(false).describe("Force re-fetch even if embeddings already exist")
         },
         handleFetch
+    );
+
+    server.tool(
+        "hex_search",
+        "Searches for Elixir packages on Hex.pm by name or description. Can search across all packages, within a specific package's versions, or get info for a specific package version. This is useful for discovering new packages or exploring available versions.",
+        {
+            query: z.string().describe("The search query to find packages (searches in name and description)"),
+            packageName: z.string().optional().describe("Optional package name to search within its versions"),
+            version: z.string().optional().describe("Optional specific version (only used with packageName)"),
+            sort: z.string().optional().describe("Sort results by: downloads (default), recent, or name"),
+            limit: z.number().optional().default(10).describe("Maximum number of results to return (default: 10)")
+        },
+        handleHexSearch
+    );
+
+    server.tool(
+        "fulltext_search",
+        `Performs full-text search on HexDocs documentation using Typesense search engine. This searches the actual documentation content across all packages on HexDocs.
+
+Query Syntax:
+- Basic search: "Phoenix.LiveView" (searches for both terms)
+- Exact phrase: "\\"handle event\\"" (use escaped quotes)
+- AND operator: "Phoenix AND LiveView" (both terms required)
+- OR operator: "Phoenix OR Plug" (either term)
+- Exclude terms: "Phoenix -test" (minus sign excludes)
+- Module/function: "Enum.map" or "GenServer.handle_call"
+
+Best Practices:
+- Use exact module.function names for precise results
+- Combine with packageName filter for focused search
+- Use quotes for multi-word exact phrases
+- For callbacks use patterns like "@callback handle_"
+- For types use patterns like "@type t()"
+
+Examples:
+- Find LiveView event handlers: query: "handle_event", packageName: "phoenix_live_view"
+- Find Ecto changesets: query: "changeset", packageName: "ecto"
+- Find specific function: query: "\\"Enum.map/2\\""
+- Find type definitions: query: "@type", packageName: "phoenix"`,
+        {
+            query: z.string().describe("The search query using Typesense syntax (see tool description for examples)"),
+            packageName: z.string().optional().describe("Optional package name to limit search to (e.g., 'phoenix', 'ecto')"),
+            version: z.string().optional().describe("Optional specific version (only used with packageName, e.g., '1.7.0')"),
+            limit: z.number().optional().default(10).describe("Maximum number of results to return (default: 10, max: 100)")
+        },
+        handleFulltextSearch
     );
 
     // Start the server with reconnection handling

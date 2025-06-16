@@ -26,14 +26,14 @@ HexDocs MCP is a project that provides semantic search capabilities for Hex pack
    - `HexdocsMcp.Version` - Semantic version comparison and filtering
 
 3. **CLI Modules**
-   - `HexdocsMcp.CLI.Fetch` - Implements fetch command
-   - `HexdocsMcp.CLI.Search` - Implements search command
+   - `HexdocsMcp.CLI.FetchDocs` - Implements fetch_docs command
+   - `HexdocsMcp.CLI.SemanticSearch` - Implements search command
    - `HexdocsMcp.CLI.Progress` - Rich progress indicators
    - `HexdocsMcp.CLI.Utils` - Shared CLI utilities
 
 ### Data Flow
 
-1. **Document Fetching**: `mix hex.docs fetch` → HTML files
+1. **Document Fetching**: `mix hex.docs fetch_docs` → HTML files
 2. **Conversion**: HTML → Markdown using Floki
 3. **Chunking**: Markdown → Semantic chunks (2000 chars, 200 overlap)
 4. **Embedding**: Chunks → 384-dimensional vectors via Ollama
@@ -80,23 +80,23 @@ Indexes on: `(package, version)`, `(package, version, content_hash)`
 
 ### CLI Commands
 
-**Fetch Command**:
+**Fetch Docs Command**:
 ```bash
-mix hex.docs.mcp fetch PACKAGE [VERSION] [options]
+mix hex.docs.mcp fetch_docs PACKAGE [VERSION] [options]
   --model MODEL    # Ollama model (default: nomic-embed-text)
   --force         # Force re-fetch even if embeddings exist
   --project PATH  # Fetch all deps from mix.exs
   --help, -h      # Show help
 
 # Examples
-mix hex.docs.mcp fetch phoenix
-mix hex.docs.mcp fetch phoenix 1.7.0 --model all-minilm
-mix hex.docs.mcp fetch --project mix.exs --force
+mix hex.docs.mcp fetch_docs phoenix
+mix hex.docs.mcp fetch_docs phoenix 1.7.0 --model all-minilm
+mix hex.docs.mcp fetch_docs --project mix.exs --force
 ```
 
 **Search Command**:
 ```bash
-mix hex.docs.mcp search [PACKAGE] [options]
+mix hex.docs.mcp semantic_search [PACKAGE] [options]
   --query QUERY       # Search query (required)
   --model MODEL       # Ollama model (default: nomic-embed-text)
   --limit LIMIT       # Max results (default: 3)
@@ -105,10 +105,10 @@ mix hex.docs.mcp search [PACKAGE] [options]
   --help, -h          # Show help
 
 # Examples
-mix hex.docs.mcp search --query "how to create channels" # Search latest versions
-mix hex.docs.mcp search phoenix --query "configuration options" --limit 10
-mix hex.docs.mcp search phoenix --query "channels" --version 1.7.0
-mix hex.docs.mcp search phoenix --query "channels" --all-versions
+mix hex.docs.mcp semantic_search --query "how to create channels" # Search latest versions
+mix hex.docs.mcp semantic_search phoenix --query "configuration options" --limit 10
+mix hex.docs.mcp semantic_search phoenix --query "channels" --version 1.7.0
+mix hex.docs.mcp semantic_search phoenix --query "channels" --all-versions
 ```
 
 ### Testing

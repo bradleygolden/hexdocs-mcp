@@ -21,12 +21,12 @@ defmodule HexdocsMcp.Config do
     Application.get_env(:hexdocs_mcp, :docs_module, HexdocsMcp.Docs)
   end
 
-  def cli_fetch_module do
-    Application.get_env(:hexdocs_mcp, :fetch_module, HexdocsMcp.CLI.Fetch)
+  def cli_fetch_docs_module do
+    Application.get_env(:hexdocs_mcp, :fetch_docs_module, HexdocsMcp.CLI.FetchDocs)
   end
 
   def cli_search_module do
-    Application.get_env(:hexdocs_mcp, :search_module, HexdocsMcp.CLI.Search)
+    Application.get_env(:hexdocs_mcp, :search_module, HexdocsMcp.CLI.SemanticSearch)
   end
 
   def ollama_client do
@@ -54,5 +54,13 @@ defmodule HexdocsMcp.Config do
 
   def system_command do
     Application.fetch_env!(:hexdocs_mcp, :system_command)
+  end
+
+  def hex_search_module do
+    Application.get_env(:hexdocs_mcp, :hex_search_module, HexdocsMcp.HexSearch)
+  end
+
+  def fulltext_search_module do
+    Application.get_env(:hexdocs_mcp, :fulltext_search_module, HexdocsMcp.FulltextSearch)
   end
 end

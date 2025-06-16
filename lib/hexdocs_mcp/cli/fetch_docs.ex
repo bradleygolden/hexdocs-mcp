@@ -1,14 +1,16 @@
-defmodule HexdocsMcp.CLI.Fetch do
+defmodule HexdocsMcp.CLI.FetchDocs do
   @moduledoc """
   Functions for fetching and processing Hex documentation.
   """
+
+  @behaviour HexdocsMcp.Behaviours.CLI.FetchDocs
 
   alias HexdocsMcp.CLI.Progress
   alias HexdocsMcp.CLI.Utils
   alias HexdocsMcp.Markdown
 
   @usage """
-    Usage: [SYSTEM_COMMAND] fetch PACKAGE [VERSION] [options]
+    Usage: [SYSTEM_COMMAND] fetch_docs PACKAGE [VERSION] [options]
 
     Fetches Hex docs for a package, converts to markdown, creates chunks, and generates embeddings.
 
@@ -36,15 +38,15 @@ defmodule HexdocsMcp.CLI.Fetch do
       5. Generates embeddings
 
     Examples:
-      [SYSTEM_COMMAND] fetch phoenix                    # Process latest version of phoenix
-      [SYSTEM_COMMAND] fetch phoenix 1.7.0              # Process specific version
-      [SYSTEM_COMMAND] fetch phoenix --model all-minilm # Use custom model
-      [SYSTEM_COMMAND] fetch --project mix.exs          # Process all dependencies in mix.exs
-      [SYSTEM_COMMAND] fetch --project mix.exs --force  # Force reprocess all dependencies
-      [SYSTEM_COMMAND] fetch phoenix --project mix.exs  # Use version of phoenix from mix.exs
+      [SYSTEM_COMMAND] fetch_docs phoenix                    # Process latest version of phoenix
+      [SYSTEM_COMMAND] fetch_docs phoenix 1.7.0              # Process specific version
+      [SYSTEM_COMMAND] fetch_docs phoenix --model all-minilm # Use custom model
+      [SYSTEM_COMMAND] fetch_docs --project mix.exs          # Process all dependencies in mix.exs
+      [SYSTEM_COMMAND] fetch_docs --project mix.exs --force  # Force reprocess all dependencies
+      [SYSTEM_COMMAND] fetch_docs phoenix --project mix.exs  # Use version of phoenix from mix.exs
       # With MIX_PROJECT_PATHS set in environment:
-      [SYSTEM_COMMAND] fetch phoenix                    # Use version from first valid project path
-      [SYSTEM_COMMAND] fetch phoenix 1.7.0              # Ignore project paths, use specified version
+      [SYSTEM_COMMAND] fetch_docs phoenix                    # Use version from first valid project path
+      [SYSTEM_COMMAND] fetch_docs phoenix 1.7.0              # Ignore project paths, use specified version
   """
 
   defmodule Context do

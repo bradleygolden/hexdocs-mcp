@@ -8,15 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Three complementary search methods:
+  - `hex_search` - Search for packages on Hex.pm by name/description, explore package versions, or get specific version info
+  - `fulltext_search` - Full-text search on HexDocs using Typesense search engine with advanced query syntax
+  - `semantic_search` - Semantic embeddings search (renamed from `search` for clarity)
 - Package and version info in search results
 - `--all-versions` flag to search across all versions (default: latest only)
 - `--version VERSION` flag to search specific version
 
-### Fixed
-- Search no longer returns duplicates from multiple package versions
-- Improved HTML parsing filters out navigation/sidebar noise
+### Changed
+- **BREAKING**: Renamed `search` command to `semantic_search` for clarity
+- **BREAKING**: Renamed `fetch` command to `fetch_docs` for consistency with MCP tool naming
+- **BREAKING**: Renamed internal modules:
+  - `HexdocsMcp.CLI.Search` → `HexdocsMcp.CLI.SemanticSearch`
+  - `HexdocsMcp.CLI.Fetch` → `HexdocsMcp.CLI.FetchDocs`
+- Updated all references in documentation, tests, and workflows
 
-## [0.5.0] - 2025-01-06
+## [0.6.0]
+
+### Fixed
+- Search no longer returns duplicates from multiple package versions ([#47552b3](https://github.com/bradleygolden/hexdocs-mcp/commit/47552b3))
+- Improved HTML parsing filters out navigation/sidebar noise ([#4e7d14c](https://github.com/bradleygolden/hexdocs-mcp/commit/4e7d14c))
+- Fixed ArgumentError when fetching docs with nil version ([#10](https://github.com/bradleygolden/hexdocs-mcp/pull/10))
+
+### Changed
+- Added integration tests and optimized CI/CD workflow
+- Removed integration tests and PR trigger from CI workflow
+
+## [0.5.0]
 
 ### Added
 - Added URL field to embedding metadata
@@ -24,8 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improves context retrieval with direct source references
   - **Note:** Embeddings created before this update will have null URL values and won't be shown to the LLM
   - To add URLs to existing embeddings:
-    - CLI: Run `mix hex.docs.mcp fetch PACKAGE --force`
-    - MCP: Ask `Please fetch the latest <PACKAGE> hexdocs with the force option`
+    - CLI: Run `mix hex.docs.mcp fetch_docs PACKAGE --force`
+    - MCP: Ask `Please fetch_docs the latest <PACKAGE> hexdocs with the force option`
 - Enhanced CLAUDE.md with comprehensive architecture documentation ([#9](https://github.com/bradleygolden/hexdocs-mcp/pull/9)) - Thanks @dvic!
 
 ### Fixed
@@ -126,12 +145,12 @@ The main change in 0.2.0 is that you no longer need to add hexdocs_mcp as a depe
 ### Removed
 - Removed `list_packages` tool from MCP server
 
-## [0.1.1] - 2024-04-04
+## [0.1.1]
 
 ### Changed
 - Published NPM package to align version with Hex package
 
-## [0.1.0] - 2024-04-03
+## [0.1.0]
 
 Initial release of HexDocs MCP, providing semantic search capabilities for Hex package documentation.
 
@@ -161,7 +180,8 @@ Initial release of HexDocs MCP, providing semantic search capabilities for Hex p
   - Default model: `nomic-embed-text`
   - Support for alternative models like `all-minilm`
 
-[Unreleased]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/bradleygolden/hexdocs-mcp/compare/v0.3.1...v0.4.0

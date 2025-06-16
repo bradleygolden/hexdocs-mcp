@@ -13,9 +13,11 @@ defmodule HexdocsMcp.CLI do
   Usage: [SYSTEM_COMMAND] COMMAND [options]
 
   Commands:
-    fetch              Download and process docs for a package or project dependencies
+    fetch_docs         Download and process docs for a package or project dependencies
                        Use --project PATH to fetch all dependencies from a mix.exs file
-    search             Search in package docs using embeddings
+    semantic_search    Search in package docs using semantic embeddings
+    hex_search         Search for packages on Hex.pm
+    fulltext_search    Full-text search on HexDocs
 
   Options:
     --help, -h         Show this help
@@ -41,12 +43,20 @@ defmodule HexdocsMcp.CLI do
     do_main(args)
   end
 
-  defp do_main(["fetch" | args]) do
-    HexdocsMcp.Config.cli_fetch_module().main(args)
+  defp do_main(["fetch_docs" | args]) do
+    HexdocsMcp.Config.cli_fetch_docs_module().main(args)
   end
 
-  defp do_main(["search" | args]) do
+  defp do_main(["semantic_search" | args]) do
     HexdocsMcp.Config.cli_search_module().main(args)
+  end
+
+  defp do_main(["hex_search" | args]) do
+    HexdocsMcp.CLI.HexSearch.main(args)
+  end
+
+  defp do_main(["fulltext_search" | args]) do
+    HexdocsMcp.CLI.FulltextSearch.main(args)
   end
 
   defp do_main(_args), do: usage()
