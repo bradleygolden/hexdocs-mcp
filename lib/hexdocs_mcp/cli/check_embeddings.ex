@@ -54,9 +54,10 @@ defmodule HexdocsMcp.CLI.CheckEmbeddings do
   end
 
   defp get_embeddings_count(package, version) do
-    alias HexdocsMcp.Repo
-    alias HexdocsMcp.Embeddings.Embedding
     import Ecto.Query
+
+    alias HexdocsMcp.Embeddings.Embedding
+    alias HexdocsMcp.Repo
 
     query =
       from e in Embedding,
@@ -67,10 +68,11 @@ defmodule HexdocsMcp.CLI.CheckEmbeddings do
   end
 
   defp parse_args(args) do
-    {opts, args} = OptionParser.parse!(args,
-      aliases: [h: :help],
-      strict: [help: :boolean]
-    )
+    {opts, args} =
+      OptionParser.parse!(args,
+        aliases: [h: :help],
+        strict: [help: :boolean]
+      )
 
     cond do
       opts[:help] ->
