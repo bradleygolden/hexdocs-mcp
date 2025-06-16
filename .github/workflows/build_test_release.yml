@@ -46,8 +46,8 @@ jobs:
       - if: steps.cache-build.outputs.cache-hit != 'true' || startsWith(github.ref, 'refs/tags/')
         uses: erlef/setup-beam@v1
         with:
-          otp-version: '27'
-          elixir-version: '1.18'
+          otp-version: '27.2'
+          elixir-version: '1.18.2'
 
       - if: steps.cache-build.outputs.cache-hit != 'true' || startsWith(github.ref, 'refs/tags/')
         uses: actions/setup-node@v4
@@ -161,8 +161,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'
         uses: erlef/setup-beam@v1
         with:
-          otp-version: '27'
-          elixir-version: '1.18'
+          otp-version: '27.2'
+          elixir-version: '1.18.2'
       
       - name: Install Elixir (macOS)
         if: matrix.os == 'macos-latest'
