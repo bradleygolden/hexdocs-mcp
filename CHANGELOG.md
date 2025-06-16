@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `hex_search` - Search for packages on Hex.pm by name/description, explore package versions, or get specific version info
   - `fulltext_search` - Full-text search on HexDocs using Typesense search engine with advanced query syntax
   - `semantic_search` - Semantic embeddings search (renamed from `search` for clarity)
+- `check_embeddings` command and MCP tool to verify if embeddings exist for a package/version
 - Package and version info in search results
 - `--all-versions` flag to search across all versions (default: latest only)
 - `--version VERSION` flag to search specific version

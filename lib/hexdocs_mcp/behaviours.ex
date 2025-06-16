@@ -54,3 +54,8 @@ defmodule HexdocsMcp.Behaviours.FulltextSearch do
   @callback search(query :: String.t(), opts :: Keyword.t()) ::
               {:ok, list(map()), map()} | {:error, String.t()}
 end
+
+defmodule HexdocsMcp.Behaviours.CLI.CheckEmbeddings do
+  @moduledoc false
+  @callback main(list) :: :ok | :error
+end

@@ -407,6 +407,25 @@ async function handleFulltextSearch(args: {
     }
 }
 
+async function handleCheckEmbeddings(args: {
+    packageName: string;
+    version?: string;
+}) {
+    const binaryPath = await getBinaryPath();
+    const cliArgs = ['check_embeddings', args.packageName];
+    
+    if (args.version) {
+        cliArgs.push(args.version);
+    }
+
+    try {
+        const { stdout } = await execFileAsync(binaryPath, cliArgs);
+        return { content: [{ type: "text" as const, text: stdout }] };
+    } catch (error) {
+        throw new Error(`Check embeddings failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
 const args = process.argv.slice(2);
 const isCheckBinary = args.includes('--check-binary');
 
@@ -496,6 +515,16 @@ Examples:
             limit: z.number().optional().default(10).describe("Maximum number of results to return (default: 10, max: 100)")
         },
         handleFulltextSearch
+    );
+
+    server.tool(
+        "check_embeddings",
+        "Checks if embeddings exist for a specific Hex package and version. This is useful before attempting semantic search to ensure the package has been processed. Returns information about whether embeddings exist and how many.",
+        {
+            packageName: z.string().describe("The Hex package name to check (required)"),
+            version: z.string().optional().describe("Optional package version, defaults to 'latest'")
+        },
+        handleCheckEmbeddings
     );
 
     // Start the server with reconnection handling

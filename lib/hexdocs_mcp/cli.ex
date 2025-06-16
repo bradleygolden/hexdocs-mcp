@@ -18,6 +18,7 @@ defmodule HexdocsMcp.CLI do
     semantic_search    Search in package docs using semantic embeddings
     hex_search         Search for packages on Hex.pm
     fulltext_search    Full-text search on HexDocs
+    check_embeddings   Check if embeddings exist for a package
 
   Options:
     --help, -h         Show this help
@@ -57,6 +58,10 @@ defmodule HexdocsMcp.CLI do
 
   defp do_main(["fulltext_search" | args]) do
     HexdocsMcp.CLI.FulltextSearch.main(args)
+  end
+
+  defp do_main(["check_embeddings" | args]) do
+    HexdocsMcp.CLI.CheckEmbeddings.main(args)
   end
 
   defp do_main(_args), do: usage()

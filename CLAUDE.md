@@ -27,7 +27,10 @@ HexDocs MCP is a project that provides semantic search capabilities for Hex pack
 
 3. **CLI Modules**
    - `HexdocsMcp.CLI.FetchDocs` - Implements fetch_docs command
-   - `HexdocsMcp.CLI.SemanticSearch` - Implements search command
+   - `HexdocsMcp.CLI.SemanticSearch` - Implements semantic_search command
+   - `HexdocsMcp.CLI.HexSearch` - Implements hex_search command
+   - `HexdocsMcp.CLI.FulltextSearch` - Implements fulltext_search command
+   - `HexdocsMcp.CLI.CheckEmbeddings` - Implements check_embeddings command
    - `HexdocsMcp.CLI.Progress` - Rich progress indicators
    - `HexdocsMcp.CLI.Utils` - Shared CLI utilities
 
@@ -94,7 +97,7 @@ mix hex.docs.mcp fetch_docs phoenix 1.7.0 --model all-minilm
 mix hex.docs.mcp fetch_docs --project mix.exs --force
 ```
 
-**Search Command**:
+**Semantic Search Command**:
 ```bash
 mix hex.docs.mcp semantic_search [PACKAGE] [options]
   --query QUERY       # Search query (required)
@@ -109,6 +112,43 @@ mix hex.docs.mcp semantic_search --query "how to create channels" # Search lates
 mix hex.docs.mcp semantic_search phoenix --query "configuration options" --limit 10
 mix hex.docs.mcp semantic_search phoenix --query "channels" --version 1.7.0
 mix hex.docs.mcp semantic_search phoenix --query "channels" --all-versions
+```
+
+**Hex Search Command**:
+```bash
+mix hex.docs.mcp hex_search [PACKAGE] [VERSION] [options]
+  --query QUERY       # Search query (required)
+  --sort SORT         # Sort results by: downloads, recent, or name
+  --limit LIMIT       # Max results (default: 10)
+  --help, -h          # Show help
+
+# Examples
+mix hex.docs.mcp hex_search --query "json parser" --limit 5
+mix hex.docs.mcp hex_search phoenix --query "1.7" # Search phoenix versions
+mix hex.docs.mcp hex_search phoenix 1.7.0 --query "info" # Get specific version info
+```
+
+**Full-text Search Command**:
+```bash
+mix hex.docs.mcp fulltext_search [PACKAGE] [VERSION] [options]
+  --query QUERY       # Search query using Typesense syntax (required)
+  --limit LIMIT       # Max results (default: 10, max: 100)
+  --help, -h          # Show help
+
+# Examples
+mix hex.docs.mcp fulltext_search --query "GenServer.handle_call"
+mix hex.docs.mcp fulltext_search phoenix --query "router" --limit 5
+mix hex.docs.mcp fulltext_search ecto 3.10.0 --query "changeset"
+```
+
+**Check Embeddings Command**:
+```bash
+mix hex.docs.mcp check_embeddings PACKAGE [VERSION]
+  --help, -h          # Show help
+
+# Examples
+mix hex.docs.mcp check_embeddings phoenix        # Check latest version
+mix hex.docs.mcp check_embeddings phoenix 1.7.0  # Check specific version
 ```
 
 ### Testing
@@ -177,7 +217,12 @@ Configuration is centralized in `HexdocsMcp.Config` for:
 
 The project includes a Node.js MCP server that:
 1. Downloads and manages the Elixir binary
-2. Exposes `fetch` and `search` tools
+2. Exposes MCP tools:
+   - `fetch_docs` - Download and process documentation with embeddings
+   - `semantic_search` - Search using semantic embeddings
+   - `hex_search` - Search packages on Hex.pm
+   - `fulltext_search` - Full-text search on HexDocs
+   - `check_embeddings` - Verify if embeddings exist for a package
 3. Handles binary updates automatically
 4. Communicates via stdio transport
 

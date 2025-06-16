@@ -173,6 +173,13 @@ Search in the existing embeddings:
 mix hex.docs.mcp semantic_search phoenix --query "channels"
 ```
 
+Check if embeddings exist for a package:
+
+```bash
+mix hex.docs.mcp check_embeddings phoenix
+mix hex.docs.mcp check_embeddings phoenix 1.7.0
+```
+
 ## Acknowledgements
 
 - [hex2text](https://github.com/mjrusso/hex2txt) - For the initial idea and as a reference

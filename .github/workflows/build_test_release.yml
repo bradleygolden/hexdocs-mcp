@@ -290,6 +290,10 @@ jobs:
         run: ./${{ matrix.binary }} fulltext_search --help
         shell: bash
       
+      - name: Test check_embeddings command help
+        run: ./${{ matrix.binary }} check_embeddings --help
+        shell: bash
+      
       - name: Test fetch_docs specific package
         run: ./${{ matrix.binary }} fetch_docs nimble_parsec
         shell: bash
@@ -352,6 +356,19 @@ jobs:
       
       - name: Test fulltext_search within package
         run: ./${{ matrix.binary }} fulltext_search nimble_parsec --query "combinator" --limit 3
+        shell: bash
+      
+      - name: Test check_embeddings for existing package
+        run: ./${{ matrix.binary }} check_embeddings nimble_parsec
+        shell: bash
+      
+      - name: Test check_embeddings for existing package with version
+        run: ./${{ matrix.binary }} check_embeddings nimble_parsec 1.4.0
+        shell: bash
+      
+      - name: Test check_embeddings for non-existent package
+        run: |
+          ./${{ matrix.binary }} check_embeddings non_existent_package_xyz || echo "Expected error, command continued"
         shell: bash
         
       - name: Test invalid command handling

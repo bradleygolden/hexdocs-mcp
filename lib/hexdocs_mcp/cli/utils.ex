@@ -11,6 +11,13 @@ defmodule HexdocsMcp.CLI.Utils do
   end
 
   @doc """
+  Display a cross symbol with ANSI color.
+  """
+  def cross do
+    "#{IO.ANSI.red()}✗#{IO.ANSI.reset()}"
+  end
+
+  @doc """
   Output information to the console.
   Works with both Mix.shell() and IO for standalone executables.
   """
