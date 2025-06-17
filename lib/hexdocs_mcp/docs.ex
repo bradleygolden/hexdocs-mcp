@@ -67,12 +67,24 @@ defmodule HexdocsMcp.Docs do
   defp extract_tarball(tarball_path, target_dir) do
     File.mkdir_p!(target_dir)
 
+    cwd_path = String.replace(target_dir, "\\", "/")
+
     case :erl_tar.extract(String.to_charlist(tarball_path), [
-           {:cwd, String.to_charlist(target_dir)},
+           {:cwd, String.to_charlist(cwd_path)},
            :compressed
          ]) do
-      :ok -> :ok
-      error -> error
+      :ok ->
+        html_files = [target_dir, "*.html"] |> Path.join() |> Path.wildcard()
+
+        if length(html_files) > 0 do
+          :ok
+        else
+          files = target_dir |> File.ls!() |> Enum.take(10)
+          {:error, "No HTML files found after extraction. Found files: #{inspect(files)}"}
+        end
+
+      error ->
+        error
     end
   end
 
