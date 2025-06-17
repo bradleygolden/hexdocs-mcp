@@ -400,7 +400,7 @@ jobs:
       - name: Test model availability check - should fail with missing model error
         run: |
           echo "Testing that fetch_docs fails gracefully when mxbai-embed-large model is not available..."
-          output=$(./${{ matrix.binary }} fetch_docs jason --model mxbai-embed-large 2>&1) || true
+          output=$(./${{ matrix.binary }} fetch_docs jason 2>&1) || true
           
           # Check if the output contains the expected error message
           if echo "$output" | grep -q "Model 'mxbai-embed-large' not found"; then
@@ -441,7 +441,7 @@ jobs:
       - name: Test model availability check - should succeed with available model
         run: |
           echo "Testing that fetch_docs works when mxbai-embed-large model is available..."
-          output=$(./${{ matrix.binary }} fetch_docs jason --model mxbai-embed-large 2>&1) || exit_code=$?
+          output=$(./${{ matrix.binary }} fetch_docs jason 2>&1) || exit_code=$?
           
           # The command might succeed or fail for other reasons (like missing packages), 
           # but it should NOT fail with "model not found" error
