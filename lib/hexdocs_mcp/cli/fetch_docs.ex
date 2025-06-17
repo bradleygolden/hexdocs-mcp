@@ -405,7 +405,9 @@ defmodule HexdocsMcp.CLI.FetchDocs do
   end
 
   defp find_html_files(docs_path) do
-    Path.wildcard(Path.join(docs_path, "**/*.html"))
+    root_html = docs_path |> Path.join("*.html") |> Path.wildcard()
+    sub_html = [docs_path, "**", "*.html"] |> Path.join() |> Path.wildcard()
+    Enum.uniq(root_html ++ sub_html)
   end
 
   defp convert_html_files_to_markdown(html_files, output_file) do
