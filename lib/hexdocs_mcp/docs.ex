@@ -11,14 +11,16 @@ defmodule HexdocsMcp.Docs do
     package_dir = Path.join(docs_base, "#{package}-#{actual_version}")
 
     if File.exists?(package_dir) and File.dir?(package_dir) do
-      output = "Docs already fetched: #{package_dir}\n"
+      normalized_path = String.replace(package_dir, "\\", "/")
+      output = "Docs already fetched: #{normalized_path}\n"
       {output, 0}
     else
       File.mkdir_p!(docs_base)
 
       case download_and_extract_docs(package, actual_version, package_dir) do
         :ok ->
-          output = "Docs fetched: #{package_dir}\n"
+          normalized_path = String.replace(package_dir, "\\", "/")
+          output = "Docs fetched: #{normalized_path}\n"
           {output, 0}
 
         {:error, reason} ->
