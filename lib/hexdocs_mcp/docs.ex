@@ -74,13 +74,13 @@ defmodule HexdocsMcp.Docs do
            :compressed
          ]) do
       :ok ->
-        html_files = [target_dir, "*.html"] |> Path.join() |> Path.wildcard()
+        files = File.ls!(target_dir)
+        html_count = Enum.count(files, &String.ends_with?(&1, ".html"))
 
-        if length(html_files) > 0 do
+        if html_count > 0 do
           :ok
         else
-          files = target_dir |> File.ls!() |> Enum.take(10)
-          {:error, "No HTML files found after extraction. Found files: #{inspect(files)}"}
+          {:error, "No HTML files found after extraction. Found files: #{inspect(Enum.take(files, 10))}"}
         end
 
       error ->
