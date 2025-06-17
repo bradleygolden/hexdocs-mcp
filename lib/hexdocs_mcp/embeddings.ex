@@ -48,6 +48,8 @@ defmodule HexdocsMcp.Embeddings do
     progress_callback = opts[:progress_callback]
     force? = opts[:force] || false
 
+    check_model_available(model)
+
     data_path = HexdocsMcp.Config.data_path()
     chunks_dir = Path.join([data_path, package, "chunks"])
     default_version = version || "latest"
@@ -85,7 +87,7 @@ defmodule HexdocsMcp.Embeddings do
       end)
 
     {count, changesets, _, reused} = result
-    
+
     if total_chunks > 0 && count == 0 && reused == 0 do
       {:error, "Failed to generate embeddings. Please check that Ollama is running and accessible."}
     else
@@ -159,8 +161,10 @@ defmodule HexdocsMcp.Embeddings do
         embedding = extract_embedding(response, chunk_file)
 
         if embedding do
+          Logger.debug("Generated embedding with #{length(embedding)} dimensions for #{chunk_file}")
           {:ok, :new, create_embedding_changeset(text, metadata, embedding, content_hash)}
         else
+          Logger.error("No embedding extracted from response for #{chunk_file}")
           {:error, :no_embedding}
         end
 
@@ -291,10 +295,15 @@ defmodule HexdocsMcp.Embeddings do
     if Enum.empty?(changesets) do
       {:ok, {0, 0, 0}}
     else
-      do_persist_changesets(changesets, callback)
-      # Return the total number of chunks as the first value to match test expectations
-      total = length(changesets)
-      {:ok, {total, total - reused, reused}}
+      case do_persist_changesets(changesets, callback) do
+        {:ok, _} ->
+          total = length(changesets)
+          {:ok, {total, total - reused, reused}}
+
+        {:error, reason} ->
+          Logger.error("Failed to persist changesets: #{inspect(reason)}")
+          {:error, "Failed to save embeddings: #{inspect(reason)}"}
+      end
     end
   end
 
@@ -309,8 +318,33 @@ defmodule HexdocsMcp.Embeddings do
   end
 
   defp insert_and_callback({changeset, idx}, total, callback) do
-    Repo.insert!(changeset, on_conflict: :replace_all)
-    if callback && rem(idx, 10) == 0, do: callback.(idx, total, :saving)
+    case Repo.insert(changeset, on_conflict: :replace_all) do
+      {:ok, _} ->
+        if callback && rem(idx, 10) == 0, do: callback.(idx, total, :saving)
+
+      {:error, %{errors: errors}} ->
+        Logger.error("Failed to insert embedding at index #{idx}")
+        Logger.error("Changeset errors: #{inspect(errors)}")
+
+        embedding_errors = Keyword.get(errors, :embedding, [])
+
+        if embedding_errors != [] do
+          Logger.error("Embedding validation error. This might be due to dimension mismatch.")
+          Logger.error("Try regenerating all embeddings with --force flag.")
+        end
+
+        raise "Failed to insert embedding: #{inspect(errors)}"
+    end
+  rescue
+    e in Exqlite.Error ->
+      if String.contains?(e.message, "dimension") do
+        Logger.error("Dimension mismatch detected: #{e.message}")
+        Logger.error("The model is generating embeddings with different dimensions than stored in the database.")
+        Logger.error("Please regenerate all embeddings using --force flag.")
+        raise "Embedding dimension mismatch. Use --force to regenerate all embeddings."
+      else
+        raise e
+      end
   end
 
   @doc """
@@ -507,6 +541,43 @@ defmodule HexdocsMcp.Embeddings do
       {:ok, count}
     else
       {:ok, 0}
+    end
+  end
+
+  defp check_model_available(model) do
+    if model == "mxbai-embed-large" do
+      try do
+        client = Ollama.init()
+
+        case Ollama.embed(client, model: model, input: "test") do
+          {:ok, _response} ->
+            :ok
+
+          {:error, error} ->
+            error_string = inspect(error)
+
+            if String.contains?(error_string, "HTTPError") and
+                 (String.contains?(error_string, "404") or String.contains?(error_string, "Not Found")) do
+              Logger.error("")
+              Logger.error("🚨 Model '#{model}' not found!")
+              Logger.error("")
+              Logger.error("To use the default embedding model, please run:")
+              Logger.error("  ollama pull #{model}")
+              Logger.error("")
+              Logger.error("This will download the recommended embedding model (~670MB)")
+              Logger.error("")
+              raise "Required model '#{model}' not available in Ollama"
+            else
+              Logger.error("Error checking model availability: #{inspect(error)}")
+              :ok
+            end
+        end
+      rescue
+        error ->
+          Logger.error("Failed to connect to Ollama: #{inspect(error)}")
+          Logger.error("Please ensure Ollama is running and accessible at http://localhost:11434")
+          raise "Could not connect to Ollama server"
+      end
     end
   end
 end

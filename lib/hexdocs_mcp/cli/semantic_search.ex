@@ -18,7 +18,6 @@ defmodule HexdocsMcp.CLI.SemanticSearch do
 
   Options:
     --query QUERY       - Search query (required)
-    --model MODEL       - Ollama model to use for search (default: nomic-embed-text)
     --limit LIMIT       - Maximum number of results to return (default: 3)
     --version VERSION   - Search only in specific version
     --all-versions      - Include results from all indexed versions (default: latest only)
@@ -166,14 +165,12 @@ defmodule HexdocsMcp.CLI.SemanticSearch do
       OptionParser.parse!(args,
         aliases: [
           q: :query,
-          m: :model,
           l: :limit,
           h: :help,
           v: :version
         ],
         strict: [
           query: :string,
-          model: :string,
           limit: :integer,
           version: :string,
           all_versions: :boolean,
@@ -189,7 +186,7 @@ defmodule HexdocsMcp.CLI.SemanticSearch do
        query: opts[:query],
        package: package,
        version: version,
-       model: opts[:model] || HexdocsMcp.Config.default_embedding_model(),
+       model: HexdocsMcp.Config.default_embedding_model(),
        limit: opts[:limit] || 3,
        all_versions: opts[:all_versions] || false,
        help?: opts[:help] || false

@@ -73,21 +73,6 @@ defmodule HexdocsMcp.CLI.FetchDocsTest do
     assert count_embeddings(package, version) == initial_count
   end
 
-  test "fetching with custom model", %{package: package, version: version} do
-    custom_model = "all-minilm"
-
-    output =
-      capture_io(fn ->
-        assert :ok = FetchDocs.main([package, version, "--model", custom_model])
-      end)
-
-    assert output =~ "using #{custom_model}"
-
-    assert_markdown_files_generated(package, version)
-    assert_chunks_generated(package, version)
-    assert_embeddings_generated(package, version)
-  end
-
   test "fetching with help flag", %{system_command: system_command} do
     output =
       capture_io(fn ->
@@ -99,7 +84,6 @@ defmodule HexdocsMcp.CLI.FetchDocsTest do
     assert output =~ "PACKAGE"
     assert output =~ "VERSION"
     assert output =~ "Options:"
-    assert output =~ "--model"
     assert output =~ "--force"
     assert output =~ "--project"
     assert output =~ "Examples:"
@@ -114,11 +98,6 @@ defmodule HexdocsMcp.CLI.FetchDocsTest do
 
     capture_io(:stderr, fn ->
       assert {:error, message} = FetchDocs.main([])
-      assert message =~ "Invalid arguments: must specify either PACKAGE or --project PATH"
-    end)
-
-    capture_io(:stderr, fn ->
-      assert {:error, message} = FetchDocs.main(["--model", "test"])
       assert message =~ "Invalid arguments: must specify either PACKAGE or --project PATH"
     end)
 

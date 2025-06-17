@@ -8,7 +8,6 @@ defmodule HexdocsMcp.MockOllamaClient do
 
   @impl true
   def init(_opts \\ []) do
-    # Track the test process so we can send messages back
     test_pid = Process.get(:test_pid)
     %{mock: true, test_pid: test_pid}
   end
@@ -20,8 +19,12 @@ defmodule HexdocsMcp.MockOllamaClient do
 
     embedding_size =
       case model do
-        "nomic-embed-text" -> 384
-        _ -> 128
+        "nomic-embed-text" -> 1024
+        "mxbai-embed-large" -> 1024
+        "all-minilm" -> 1024
+        "all-minilm:l6-v2" -> 1024
+        "test-model" -> 1024
+        _ -> 1024
       end
 
     embedding =
@@ -31,7 +34,6 @@ defmodule HexdocsMcp.MockOllamaClient do
         [List.duplicate(0.1, embedding_size)]
       end
 
-    # Track model usage if a test_pid is provided
     if test_pid && Process.get(:track_model_usage) do
       send(test_pid, {:model_used, model})
     end

@@ -9,7 +9,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
   alias HexdocsMcp.Embeddings.Embedding
   alias HexdocsMcp.Repo
 
-  @default_model "nomic-embed-text"
+  @default_model "mxbai-embed-large"
   @default_version "latest"
 
   setup :verify_on_exit!
@@ -83,7 +83,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
     HexdocsMcp.MockOllama
     |> stub(:init, fn _ -> %{mock: true} end)
     |> stub(:embed, fn _client, opts ->
-      embedding = List.duplicate(0.1, 384)
+      embedding = List.duplicate(0.1, 1024)
 
       {:ok,
        %{
@@ -446,10 +446,10 @@ defmodule HexdocsMcp.EmbeddingsTest do
       test_pid = self()
 
       HexdocsMcp.MockOllama
-      |> expect(:init, fn _ -> %{mock: true} end)
-      |> expect(:embed, fn _client, _opts ->
+      |> expect(:init, 2, fn _ -> %{mock: true} end)
+      |> expect(:embed, 2, fn _client, _opts ->
         send(test_pid, :embedding_generated)
-        embedding = List.duplicate(0.1, 384)
+        embedding = List.duplicate(0.1, 1024)
         {:ok, %{"embeddings" => [embedding]}}
       end)
 
@@ -489,7 +489,13 @@ defmodule HexdocsMcp.EmbeddingsTest do
 
       File.write!(new_chunk_file, Jason.encode!(new_chunk_content))
 
-      expect(HexdocsMcp.MockOllama, :init, fn _ -> %{mock: true} end)
+      expect(HexdocsMcp.MockOllama, :init, 2, fn _ -> %{mock: true} end)
+
+      expect(HexdocsMcp.MockOllama, :embed, fn _client, _opts ->
+        embedding = List.duplicate(0.1, 1024)
+        {:ok, %{"embeddings" => [embedding]}}
+      end)
+
       {:ok, {1, 0, 1}} = Embeddings.generate(package, new_version, @default_model)
 
       new_embedding =
@@ -547,22 +553,6 @@ defmodule HexdocsMcp.EmbeddingsTest do
       end
     end
 
-    test "generates embeddings with custom model", %{test_package: package} do
-      test_pid = self()
-      custom_model = "all-minilm"
-
-      expect(HexdocsMcp.MockOllama, :embed, 3, fn _client, opts ->
-        send(test_pid, {:model_used, Keyword.get(opts, :model)})
-        embedding = List.duplicate(0.1, 384)
-        {:ok, %{"model" => Keyword.get(opts, :model), "embeddings" => [embedding]}}
-      end)
-
-      {:ok, {total, _, _}} = Embeddings.generate(package, @default_version, custom_model)
-
-      assert total == 3
-      assert_received {:model_used, ^custom_model}
-    end
-
     test "reports progress with callback", %{test_package: package} do
       test_pid = self()
 
@@ -597,14 +587,14 @@ defmodule HexdocsMcp.EmbeddingsTest do
       %{test_package: package} = setup_test_environment()
 
       HexdocsMcp.MockOllama
-      |> expect(:init, fn _ -> %{mock: true} end)
-      |> expect(:embed, 3, fn _client, opts ->
+      |> expect(:init, 2, fn _ -> %{mock: true} end)
+      |> expect(:embed, 4, fn _client, opts ->
         case opts[:input] do
           "Sample text for chunk 2" ->
             {:error, %{reason: "Embedding failed for this chunk"}}
 
           _ ->
-            embedding = List.duplicate(0.1, 384)
+            embedding = List.duplicate(0.1, 1024)
             {:ok, %{"model" => opts[:model], "embeddings" => [embedding]}}
         end
       end)
@@ -795,23 +785,6 @@ defmodule HexdocsMcp.EmbeddingsTest do
       end
     end
 
-    test "searches with custom model", %{test_package: package} do
-      test_pid = self()
-      custom_model = "all-minilm"
-
-      HexdocsMcp.MockOllama
-      |> expect(:init, fn _ -> %{mock: true} end)
-      |> expect(:embed, fn _client, opts ->
-        send(test_pid, {:model_used, Keyword.get(opts, :model)})
-        embedding = List.duplicate(0.1, 384)
-        {:ok, %{"model" => opts[:model], "embeddings" => [embedding]}}
-      end)
-
-      Embeddings.search("test query", package, @default_version, custom_model)
-
-      assert_received {:model_used, ^custom_model}
-    end
-
     test "limits results based on top_k option", %{test_package: package} do
       setup_search_mock()
       query = "Test search query"
@@ -996,7 +969,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
       HexdocsMcp.MockOllama
       |> expect(:init, fn _ -> %{mock: true} end)
       |> expect(:embed, fn _client, _opts ->
-        embedding = List.duplicate(0.1, 384)
+        embedding = List.duplicate(0.1, 1024)
         {:ok, %{"embeddings" => [embedding]}}
       end)
 
@@ -1019,7 +992,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
   end
 
   defp create_test_embedding(package, version, opts \\ []) do
-    embedding_vector = List.duplicate(0.1, 384)
+    embedding_vector = List.duplicate(0.1, 1024)
     rand_id = :rand.uniform(10_000)
     text = "Test embedding with specific version #{rand_id}"
     url = opts[:url] || if opts[:with_url], do: "https://hexdocs.pm/#{package}/test_file_#{rand_id}.html"
@@ -1049,7 +1022,7 @@ defmodule HexdocsMcp.EmbeddingsTest do
     HexdocsMcp.MockOllama
     |> expect(:init, fn _ -> %{mock: true} end)
     |> expect(:embed, fn _client, _opts ->
-      embedding = List.duplicate(0.1, 384)
+      embedding = List.duplicate(0.1, 1024)
       {:ok, %{"embeddings" => [embedding]}}
     end)
   end

@@ -66,32 +66,10 @@ defmodule HexdocsMcp.CLI.SemanticSearchTest do
     output =
       capture_io(fn ->
         results = SemanticSearch.main(["--query", query])
-        # Results should come from all packages, but in this test we only have one package
         assert_valid_search_results(results, package, version)
       end)
 
     assert output =~ "Searching for \"#{query}\" in all packages"
-    assert output =~ "Found"
-    assert output =~ "Result (score:"
-    assert output =~ "File:"
-    assert output =~ "Text:"
-  end
-
-  test "searching with custom model", %{package: package, version: version} do
-    query = "how to handle authentication"
-    custom_model = "all-minilm"
-
-    capture_io(fn ->
-      assert :ok = FetchDocs.main([package, version, "--model", custom_model])
-    end)
-
-    output =
-      capture_io(fn ->
-        results = SemanticSearch.main([package, version, "--query", query, "--model", custom_model])
-        assert_valid_search_results(results, package, version)
-      end)
-
-    assert output =~ "Searching for \"#{query}\""
     assert output =~ "Found"
     assert output =~ "Result (score:"
     assert output =~ "File:"
@@ -111,7 +89,6 @@ defmodule HexdocsMcp.CLI.SemanticSearchTest do
         assert results == []
       end)
 
-    # Verify the output contains instructions for generating embeddings
     assert output =~ "No results found"
     assert output =~ "Make sure you've generated embeddings"
     assert output =~ "#{system_command} fetch_docs #{package} #{version}"
@@ -120,7 +97,6 @@ defmodule HexdocsMcp.CLI.SemanticSearchTest do
   test "searching when no embeddings exist and no package specified" do
     query = "how to configure websockets"
 
-    # Ensure no embeddings exist
     Repo.delete_all(HexdocsMcp.Embeddings.Embedding)
 
     output =
@@ -129,10 +105,8 @@ defmodule HexdocsMcp.CLI.SemanticSearchTest do
         assert results == []
       end)
 
-    # Verify the output contains appropriate message for all-package search
     assert output =~ "No results found"
     assert output =~ "Try searching for a specific package or generate embeddings for packages first"
-    # This should only appear when a package is specified
     refute output =~ "Make sure you've generated embeddings"
   end
 
@@ -147,7 +121,6 @@ defmodule HexdocsMcp.CLI.SemanticSearchTest do
     assert output =~ "PACKAGE    - Hex package name to search in (optional"
     assert output =~ "Options:"
     assert output =~ "--query"
-    assert output =~ "--model"
     assert output =~ "--version VERSION"
     assert output =~ "--all-versions"
     assert output =~ "Examples:"
@@ -274,7 +247,6 @@ defmodule HexdocsMcp.CLI.SemanticSearchTest do
     assert output =~ "Version: 2.0.0"
   end
 
-  # Helper functions
   defp assert_valid_search_results(results, package, version) do
     assert is_list(results)
     assert length(results) > 0

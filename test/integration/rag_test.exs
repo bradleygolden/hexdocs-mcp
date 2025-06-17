@@ -9,7 +9,7 @@ defmodule HexdocsMcp.RagTest do
 
   @moduletag :integration
 
-  @default_model "nomic-embed-text"
+  @default_model "mxbai-embed-large"
 
   setup :setup_test_environment
   setup :check_ollama_availability
@@ -251,7 +251,7 @@ defmodule HexdocsMcp.RagTest do
       Repo.delete_all(from e in Embedding, where: e.package == ^package)
 
       capture_io(fn ->
-        FetchDocs.main([package, "--force", "--model", @default_model])
+        FetchDocs.main([package, "--force"])
       end)
 
       jason_embeddings = Repo.all(from e in Embedding, where: e.package == ^package)
@@ -285,7 +285,7 @@ defmodule HexdocsMcp.RagTest do
         Repo.delete_all(from e in Embedding, where: e.package == ^package)
 
         capture_io(fn ->
-          FetchDocs.main([package, "--force", "--model", @default_model])
+          FetchDocs.main([package, "--force"])
         end)
       end
 

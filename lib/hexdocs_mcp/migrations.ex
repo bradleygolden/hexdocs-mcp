@@ -9,7 +9,7 @@ defmodule HexdocsMcp.Migrations do
   alias HexdocsMcp.Repo
 
   @doc """
-  Creates the embeddings table.
+  Creates the embeddings table with 1024 dimensions (for mxbai-embed-large).
 
   ## Options
     * `:prefix` - The prefix to run the migrations in
@@ -32,7 +32,7 @@ defmodule HexdocsMcp.Migrations do
         text_snippet TEXT,
         text TEXT NOT NULL,
         content_hash TEXT NOT NULL,
-        embedding FLOAT[384] NOT NULL,
+        embedding FLOAT[1024] NOT NULL,
         inserted_at TIMESTAMP,
         updated_at TIMESTAMP,
         UNIQUE(package, version, source_file, text_snippet)

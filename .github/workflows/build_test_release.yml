@@ -397,6 +397,85 @@ jobs:
         run: ./${{ matrix.binary }} check_embeddings --help
         shell: bash
       
+      - name: Test model availability check - should fail with missing model error
+        run: |
+          echo "Testing that fetch_docs fails gracefully when mxbai-embed-large model is not available..."
+          output=$(./${{ matrix.binary }} fetch_docs jason --model mxbai-embed-large 2>&1) || true
+          
+          # Check if the output contains the expected error message
+          if echo "$output" | grep -q "Model 'mxbai-embed-large' not found"; then
+            echo "✓ PASS: Correct error message displayed for missing model"
+            echo "Error message output:"
+            echo "$output" | grep -A 10 -B 2 "Model.*not found"
+          else
+            echo "✗ FAIL: Expected error message not found"
+            echo "Full output:"
+            echo "$output"
+            exit 1
+          fi
+          
+          # Check if it suggests the correct ollama pull command
+          if echo "$output" | grep -q "ollama pull mxbai-embed-large"; then
+            echo "✓ PASS: Correctly suggests pulling the required model"
+          else
+            echo "✗ FAIL: Does not suggest pulling the required model"
+            echo "Full output:"
+            echo "$output"
+            exit 1
+          fi
+        shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
+      
+      - name: Pull mxbai-embed-large model for testing
+        run: |
+          echo "Pulling mxbai-embed-large model for subsequent tests..."
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            C:/ollama/ollama.exe pull mxbai-embed-large
+          else
+            ollama pull mxbai-embed-large
+          fi
+          echo "✓ Model pulled successfully"
+        shell: bash
+      
+      - name: Test model availability check - should succeed with available model
+        run: |
+          echo "Testing that fetch_docs works when mxbai-embed-large model is available..."
+          output=$(./${{ matrix.binary }} fetch_docs jason --model mxbai-embed-large 2>&1) || exit_code=$?
+          
+          # The command might succeed or fail for other reasons (like missing packages), 
+          # but it should NOT fail with "model not found" error
+          if echo "$output" | grep -q "Model 'mxbai-embed-large' not found"; then
+            echo "✗ FAIL: Model not found error still appears after pulling"
+            echo "Full output:"
+            echo "$output"
+            exit 1
+          else
+            echo "✓ PASS: No 'model not found' error - model availability check passed"
+          fi
+        shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
+      
+      - name: Test default model behavior - should use mxbai-embed-large by default
+        run: |
+          echo "Testing that default model is mxbai-embed-large..."
+          # Try to fetch a small package with default model (should work now that we pulled mxbai-embed-large)
+          output=$(./${{ matrix.binary }} fetch_docs jason 2>&1) || exit_code=$?
+          
+          # Should not complain about missing model since we have mxbai-embed-large
+          if echo "$output" | grep -q "Model.*not found"; then
+            echo "✗ FAIL: Default model seems to not be available"
+            echo "Full output:"
+            echo "$output"
+            exit 1
+          else
+            echo "✓ PASS: Default model works (mxbai-embed-large is being used)"
+          fi
+        shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
+      
       - name: Test fetch_docs specific package
         run: ./${{ matrix.binary }} fetch_docs nimble_parsec
         shell: bash

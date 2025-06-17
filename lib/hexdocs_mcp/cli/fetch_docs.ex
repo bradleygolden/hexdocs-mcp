@@ -19,7 +19,6 @@ defmodule HexdocsMcp.CLI.FetchDocs do
       VERSION    - Package version (optional, defaults to latest)
 
     Options:
-      --model MODEL    - Ollama model to use for embeddings (default: nomic-embed-text)
       --force          - Force re-fetch even if embeddings already exist
       --project PATH   - Path to mix.exs file to fetch all dependencies from
                          When used with PACKAGE but no VERSION, uses the version from mix.exs
@@ -40,11 +39,9 @@ defmodule HexdocsMcp.CLI.FetchDocs do
     Examples:
       [SYSTEM_COMMAND] fetch_docs phoenix                    # Process latest version of phoenix
       [SYSTEM_COMMAND] fetch_docs phoenix 1.7.0              # Process specific version
-      [SYSTEM_COMMAND] fetch_docs phoenix --model all-minilm # Use custom model
       [SYSTEM_COMMAND] fetch_docs --project mix.exs          # Process all dependencies in mix.exs
       [SYSTEM_COMMAND] fetch_docs --project mix.exs --force  # Force reprocess all dependencies
       [SYSTEM_COMMAND] fetch_docs phoenix --project mix.exs  # Use version of phoenix from mix.exs
-      # With MIX_PROJECT_PATHS set in environment:
       [SYSTEM_COMMAND] fetch_docs phoenix                    # Use version from first valid project path
       [SYSTEM_COMMAND] fetch_docs phoenix 1.7.0              # Ignore project paths, use specified version
   """
@@ -277,7 +274,10 @@ defmodule HexdocsMcp.CLI.FetchDocs do
 
     progress_callback = create_embedding_progress_callback()
 
-    case HexdocsMcp.Embeddings.generate(package, version, model, progress_callback: progress_callback, force: context.force?) do
+    case HexdocsMcp.Embeddings.generate(package, version, model,
+           progress_callback: progress_callback,
+           force: context.force?
+         ) do
       {:ok, {total_count, new_count, reused_count}} ->
         Utils.output_info("#{Utils.check()} Processing completed:")
         Utils.output_info("  • Docs location: #{docs_path}")
@@ -297,7 +297,7 @@ defmodule HexdocsMcp.CLI.FetchDocs do
         Process.delete(:saving_progress_fn)
         Process.delete(:progress_processing_total)
         Process.delete(:progress_saving_total)
-        
+
         raise(message)
     end
   end
@@ -600,7 +600,7 @@ defmodule HexdocsMcp.CLI.FetchDocs do
     help? = opts[:help] || false
 
     project_path = get_project_path(opts[:project], package)
-    model = opts[:model] || HexdocsMcp.Config.default_embedding_model()
+    model = HexdocsMcp.Config.default_embedding_model()
     force? = opts[:force] || false
 
     create_context(help?, package, version, project_path, model, force?)
@@ -609,13 +609,11 @@ defmodule HexdocsMcp.CLI.FetchDocs do
   defp parse_options(args) do
     OptionParser.parse!(args,
       aliases: [
-        m: :model,
         f: :force,
         h: :help,
         p: :project
       ],
       strict: [
-        model: :string,
         force: :boolean,
         help: :boolean,
         project: :string

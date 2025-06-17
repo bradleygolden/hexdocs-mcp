@@ -11,7 +11,7 @@ defmodule HexdocsMcp.SmokeTest do
 
   @moduletag :integration
 
-  @test_model "nomic-embed-text"
+  @test_model "mxbai-embed-large"
   @smoke_test_package "hexdocs_mcp_smoke_test"
 
   setup do

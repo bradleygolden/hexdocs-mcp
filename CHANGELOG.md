@@ -16,8 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Package and version info in search results
 - `--all-versions` flag to search across all versions (default: latest only)
 - `--version VERSION` flag to search specific version
+- Improved model error messaging with instructions to pull required models
 
 ### Changed
+- **BREAKING**: Default embedding model changed from `nomic-embed-text` to `mxbai-embed-large`
+  - Provides significantly better semantic search quality
+  - Consistent 1024-dimension embeddings across all platforms (Windows/macOS/Linux)
+  - Existing embeddings will be automatically cleared during upgrade
+  - Users must run `ollama pull mxbai-embed-large` before using
+- **BREAKING**: Removed model configuration options
+  - Removed `HEXDOCS_MCP_DEFAULT_EMBEDDING_MODEL` environment variable
+  - Removed `--model` flag from all CLI commands
+  - All operations now use the hardcoded `mxbai-embed-large` model
 - **BREAKING**: Renamed `search` command to `semantic_search` for clarity
 - **BREAKING**: Renamed `fetch` command to `fetch_docs` for consistency with MCP tool naming
 - **BREAKING**: Renamed internal modules:
@@ -31,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Downloads documentation tarballs from `https://repo.hex.pm/docs/`
   - Extracts using Erlang's built-in `:erl_tar` module
   - Improves compatibility with Burrito-packaged releases on all platforms
+- Database schema now uses 1024-dimension embeddings for improved search quality
 
 ## [0.6.0]
 

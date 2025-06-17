@@ -69,13 +69,36 @@ But you can update it to be available in the :dev environment:
 ### Requirements
 
 - [Ollama](https://ollama.ai) - Required for generating embeddings
-  - Run `ollama pull nomic-embed-text` to download the recommended embedding model
+  - Run `ollama pull mxbai-embed-large` to download the recommended embedding model
   - Ensure Ollama is running before using the embedding features
 - Elixir 1.16+ and Erlang/OTP 26+ 
   - Installed automatically in CI environments
   - Required locally for development
 - Mix - The Elixir build tool (comes with Elixir installation)
 - Node.js 22 or later (for the MCP server)
+
+### Breaking Change: Model Migration (v0.6.0+)
+
+**⚠️ IMPORTANT**: Version 0.6.0 introduces a breaking change with the default embedding model.
+
+**What changed**: 
+- Default model changed from `nomic-embed-text` (384 dimensions) to `mxbai-embed-large` (1024 dimensions)
+- Existing embeddings are incompatible and will be cleared during upgrade
+
+**To upgrade**:
+1. Pull the new model:
+   ```bash
+   ollama pull mxbai-embed-large
+   ```
+
+2. Your existing embeddings will be automatically cleared when you first run any command
+
+3. Regenerate embeddings for your packages:
+   ```bash
+   mix hex.docs.mcp fetch_docs phoenix
+   ```
+
+**Why this change**: `mxbai-embed-large` provides significantly better semantic search quality and consistent dimensions across all platforms (Windows/macOS/Linux).
 
 ## Configuration
 
@@ -86,7 +109,6 @@ The following environment variables can be used to configure the tool:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `HEXDOCS_MCP_PATH` | Path where data will be stored | `~/.hexdocs_mcp` |
-| `HEXDOCS_MCP_DEFAULT_EMBEDDING_MODEL` | Default model to use for embeddings | `nomic-embed-text` |
 | `HEXDOCS_MCP_MIX_PROJECT_PATHS` | Comma-separated list of paths to mix.exs files | (none) |
 
 #### Examples:
@@ -94,9 +116,6 @@ The following environment variables can be used to configure the tool:
 ```bash
 # Set custom storage location
 export HEXDOCS_MCP_PATH=/path/to/custom/directory
-
-# Use a different default embedding model
-export HEXDOCS_MCP_DEFAULT_EMBEDDING_MODEL=all-minilm
 
 # Configure common project paths to avoid specifying --project flag each time
 export HEXDOCS_MCP_MIX_PROJECT_PATHS="/path/to/project1/mix.exs,/path/to/project2/mix.exs"
@@ -116,7 +135,6 @@ You can also configure environment variables in the MCP configuration for the se
       ],
       "env": {
         "HEXDOCS_MCP_PATH": "/path/to/custom/directory",
-        "HEXDOCS_MCP_DEFAULT_EMBEDDING_MODEL": "all-minilm",
         "HEXDOCS_MCP_MIX_PROJECT_PATHS": "/path/to/project1/mix.exs,/path/to/project2/mix.exs"
       }
     }
@@ -146,12 +164,6 @@ Fetch documentation for a specific version:
 
 ```bash
 mix hex.docs.mcp fetch_docs phoenix 1.5.9
-```
-
-Use a specific embedding model when fetching:
-
-```bash
-mix hex.docs.mcp fetch_docs phoenix --model all-minilm
 ```
 
 Fetch documentation for a package using the version from your project:
