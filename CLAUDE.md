@@ -173,6 +173,7 @@ mix hex.docs.mcp check_embeddings phoenix 1.7.0  # Check specific version
 - **Module Structure**: Follow conventional mix project structure
 - **Types**: Prefer not to document function types using @spec
 - **Comments**: Avoid code comments unless absolutely necessary
+- **Cross-Platform Compatibility**: Ensure all changes are compatible with mac, windows and linux
 
 ## Testing Patterns
 

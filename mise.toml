@@ -9,10 +9,24 @@ depends = ["build"]
 depends_post = ["test"]
 
 [tasks.build]
-run = ["mix setup", "mix compile --no-optional-deps --warnings-as-errors", "npm i", "npm run build"]
+run = [
+    "mix setup",
+    "mix compile --no-optional-deps --warnings-as-errors",
+    "npm i",
+    "npm run build",
+]
 
 [tasks.test]
-run = ["mix test", "mix format --check-formatted", "mix deps --check-unused", "mix deps.unlock --all", "mix deps.get", "mix test", "git checkout mix.lock"]
+run = [
+    "mix test",
+    "mix format --check-formatted",
+    "mix deps --check-unused",
+    "mix deps.unlock --all",
+    "mix deps.get",
+    "mix test",
+    "mix test --only integration",
+    "git checkout mix.lock",
+]
 
 # low level tasks
 
