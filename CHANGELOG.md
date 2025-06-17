@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced tool descriptions to guide AI behavior when used alongside TideWave
   - hex_search and fulltext_search now mention preferring TideWave when available
   - semantic_search and fetch_docs emphasize their unique value that complements TideWave
+- Documentation fetching now uses Hex.pm API directly instead of `mix hex.docs fetch`
+  - Downloads documentation tarballs from `https://repo.hex.pm/docs/`
+  - Extracts using Erlang's built-in `:erl_tar` module
+  - Improves compatibility with Burrito-packaged releases on all platforms
 
 ## [0.6.0]
 

@@ -6,18 +6,71 @@ defmodule HexdocsMcp.Docs do
 
   @impl Docs
   def fetch(package, version) do
-    args =
-      case version do
-        nil -> ["hex.docs", "fetch", package]
-        "latest" -> ["hex.docs", "fetch", package]
-        version -> ["hex.docs", "fetch", package, version]
+    actual_version = resolve_version(package, version)
+    docs_base = Path.join(HexdocsMcp.Config.data_path(), "docs")
+    package_dir = Path.join(docs_base, "#{package}-#{actual_version}")
+
+    if File.exists?(package_dir) and File.dir?(package_dir) do
+      output = "Docs already fetched: #{package_dir}\n"
+      {output, 0}
+    else
+      File.mkdir_p!(docs_base)
+
+      case download_and_extract_docs(package, actual_version, package_dir) do
+        :ok ->
+          output = "Docs fetched: #{package_dir}\n"
+          {output, 0}
+
+        {:error, reason} ->
+          raise "Failed to fetch docs: #{reason}"
       end
+    end
+  end
 
-    result = System.cmd("mix", args, stderr_to_stdout: true)
+  defp resolve_version(package, nil), do: get_latest_version!(package)
+  defp resolve_version(package, "latest"), do: get_latest_version!(package)
+  defp resolve_version(_package, version), do: version
 
-    case result do
-      {output, 0} -> {output, 0}
-      {output, _} -> raise "Failed to fetch docs: \n#{output}"
+  defp get_latest_version!(package) do
+    case get_latest_version(package) do
+      {:ok, version} -> version
+      {:error, reason} -> raise reason
+    end
+  end
+
+  defp download_and_extract_docs(package, version, target_dir) do
+    url = "https://repo.hex.pm/docs/#{package}-#{version}.tar.gz"
+    tarball_path = Path.join(System.tmp_dir!(), "#{package}-#{version}-docs.tar.gz")
+
+    with {:download, {:ok, %{status: 200}}} <- {:download, Req.get(url, into: File.stream!(tarball_path))},
+         {:extract, :ok} <- {:extract, extract_tarball(tarball_path, target_dir)} do
+      File.rm(tarball_path)
+      :ok
+    else
+      {:download, {:ok, %{status: 404}}} ->
+        {:error, "Package documentation not found (404)"}
+
+      {:download, {:ok, %{status: status}}} ->
+        {:error, "Failed to download docs (HTTP #{status})"}
+
+      {:download, {:error, reason}} ->
+        {:error, "Download failed: #{inspect(reason)}"}
+
+      {:extract, {:error, reason}} ->
+        File.rm_rf!(tarball_path)
+        {:error, "Failed to extract docs: #{inspect(reason)}"}
+    end
+  end
+
+  defp extract_tarball(tarball_path, target_dir) do
+    File.mkdir_p!(target_dir)
+
+    case :erl_tar.extract(String.to_charlist(tarball_path), [
+           {:cwd, String.to_charlist(target_dir)},
+           :compressed
+         ]) do
+      :ok -> :ok
+      error -> error
     end
   end
 
