@@ -181,9 +181,14 @@ jobs:
         run: |
           curl -fsSL https://ollama.com/install.sh | sh
           ollama serve &
-          sleep 5  # Give Ollama time to start
-          # Pull the embedding model we'll use
+          sleep 10
           ollama pull nomic-embed-text
+          if curl -s http://localhost:11434/api/tags > /dev/null; then
+            echo "Ollama is running and accessible"
+          else
+            echo "WARNING: Ollama API is not accessible"
+            ps aux | grep ollama
+          fi
         shell: bash
       
       - name: Set up Homebrew
@@ -197,23 +202,56 @@ jobs:
           brew install --cask ollama
           
           ollama serve &
-          sleep 5  # Give Ollama time to start
+          sleep 10
           
-          # Pull the embedding model we'll use
           ollama pull nomic-embed-text
+          if curl -s http://localhost:11434/api/tags > /dev/null; then
+            echo "Ollama is running and accessible"
+          else
+            echo "WARNING: Ollama API is not accessible"
+            ps aux | grep ollama
+          fi
         shell: bash
       
       - name: Install Ollama (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          # Download and install Ollama for Windows
+          Write-Host "Downloading Ollama standalone CLI..."
           Invoke-WebRequest -Uri "https://ollama.com/download/ollama-windows-amd64.zip" -OutFile "ollama.zip"
           Expand-Archive -Path "ollama.zip" -DestinationPath "C:\ollama"
-          # Start Ollama as a background process
-          Start-Process -FilePath "C:\ollama\ollama.exe" -ArgumentList "serve" -NoNewWindow
-          Start-Sleep -Seconds 5  # Give Ollama time to start
-          # Pull the embedding model we'll use
+          
+          $env:PATH = "C:\ollama;$env:PATH"
+          
+          Write-Host "Starting Ollama server..."
+          $job = Start-Job -ScriptBlock { C:\ollama\ollama.exe serve }
+          
+          Write-Host "Waiting for Ollama to start..."
+          $attempts = 0
+          $maxAttempts = 30
+          while ($attempts -lt $maxAttempts) {
+            try {
+              $response = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method GET -ErrorAction Stop
+              Write-Host "Ollama is running and accessible!"
+              break
+            } catch {
+              $attempts++
+              if ($attempts -eq $maxAttempts) {
+                Write-Host "ERROR: Ollama failed to start after $maxAttempts attempts"
+                Write-Host "Job State: $($job.State)"
+                Receive-Job -Job $job
+                exit 1
+              }
+              Write-Host "Attempt $attempts/$maxAttempts - Ollama not ready yet, waiting..."
+              Start-Sleep -Seconds 2
+            }
+          }
+          
+          Write-Host "Pulling nomic-embed-text model..."
           C:\ollama\ollama.exe pull nomic-embed-text
+          
+          $models = C:\ollama\ollama.exe list
+          Write-Host "Available models:"
+          Write-Host $models
         shell: pwsh
       
       - name: Create test project (Linux/macOS)
