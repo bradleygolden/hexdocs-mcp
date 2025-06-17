@@ -220,10 +220,11 @@ jobs:
           Invoke-WebRequest -Uri "https://ollama.com/download/ollama-windows-amd64.zip" -OutFile "ollama.zip"
           Expand-Archive -Path "ollama.zip" -DestinationPath "C:\ollama"
           
+          echo "C:\ollama" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           $env:PATH = "C:\ollama;$env:PATH"
           
-          Write-Host "Starting Ollama server..."
-          $job = Start-Job -ScriptBlock { C:\ollama\ollama.exe serve }
+          Write-Host "Starting Ollama server in background..."
+          Start-Process -FilePath "C:\ollama\ollama.exe" -ArgumentList "serve" -NoNewWindow
           
           Write-Host "Waiting for Ollama to start..."
           $attempts = 0
@@ -237,8 +238,7 @@ jobs:
               $attempts++
               if ($attempts -eq $maxAttempts) {
                 Write-Host "ERROR: Ollama failed to start after $maxAttempts attempts"
-                Write-Host "Job State: $($job.State)"
-                Receive-Job -Job $job
+                Get-Process -Name "ollama" -ErrorAction SilentlyContinue
                 exit 1
               }
               Write-Host "Attempt $attempts/$maxAttempts - Ollama not ready yet, waiting..."
@@ -246,12 +246,62 @@ jobs:
             }
           }
           
-          Write-Host "Pulling nomic-embed-text model..."
-          C:\ollama\ollama.exe pull nomic-embed-text
+          Write-Host "Testing Ollama embedding endpoint before model pull..."
+          try {
+            $testPayload = @{
+              model = "nomic-embed-text"
+              input = "test"
+            } | ConvertTo-Json
+            
+            $embeddingResponse = Invoke-RestMethod -Uri "http://localhost:11434/api/embed" -Method POST -Body $testPayload -ContentType "application/json" -ErrorAction Stop
+            Write-Host "Note: Embedding endpoint accessible but model not yet downloaded"
+          } catch {
+            Write-Host "Expected: Model not yet available, pulling now..."
+          }
           
-          $models = C:\ollama\ollama.exe list
+          Write-Host "Pulling nomic-embed-text model..."
+          & C:\ollama\ollama.exe pull nomic-embed-text
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "ERROR: Failed to pull model"
+            exit 1
+          }
+          
+          $models = & C:\ollama\ollama.exe list
           Write-Host "Available models:"
           Write-Host $models
+          
+          Write-Host "Testing Ollama embedding endpoint after model pull..."
+          $retries = 0
+          $maxRetries = 5
+          while ($retries -lt $maxRetries) {
+            try {
+              $testPayload = @{
+                model = "nomic-embed-text"
+                input = "test"
+              } | ConvertTo-Json
+              
+              $embeddingResponse = Invoke-RestMethod -Uri "http://localhost:11434/api/embed" -Method POST -Body $testPayload -ContentType "application/json" -ErrorAction Stop
+              Write-Host "SUCCESS: Ollama embedding endpoint is working!"
+              Write-Host "Embedding dimension: $($embeddingResponse.embeddings[0].Length)"
+              break
+            } catch {
+              $retries++
+              if ($retries -eq $maxRetries) {
+                Write-Host "ERROR: Failed to generate test embedding after $maxRetries attempts: $_"
+                Write-Host "Checking if Ollama is still running..."
+                Get-Process -Name "ollama" -ErrorAction SilentlyContinue
+                try {
+                  $response = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method GET -ErrorAction Stop
+                  Write-Host "Ollama API is still accessible but embedding generation fails"
+                } catch {
+                  Write-Host "ERROR: Ollama API is no longer accessible"
+                }
+                exit 1
+              }
+              Write-Host "Retry $retries/$maxRetries - Waiting for model to be ready..."
+              Start-Sleep -Seconds 2
+            }
+          }
         shell: pwsh
       
       - name: Create test project (Linux/macOS)
@@ -335,46 +385,68 @@ jobs:
       - name: Test fetch_docs specific package
         run: ./${{ matrix.binary }} fetch_docs nimble_parsec
         shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
       
       - name: Test fetch_docs specific package with version
         run: ./${{ matrix.binary }} fetch_docs nimble_parsec 1.4.0
         shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
       
       - name: Test fetch_docs with custom model
         run: ./${{ matrix.binary }} fetch_docs jason --model nomic-embed-text
         shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
       
       - name: Test fetch_docs with force option
         run: ./${{ matrix.binary }} fetch_docs nimble_parsec --force
         shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
       
       - name: Test fetch_docs from project
         run: ./${{ matrix.binary }} fetch_docs --project test_project/mix.exs
         shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
       
       - name: Test fetch_docs specific package from project
         run: ./${{ matrix.binary }} fetch_docs nimble_parsec --project test_project/mix.exs
         shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
       
       - name: Test semantic_search with query
         run: ./${{ matrix.binary }} semantic_search -q "what is nimble_parsec?"
         shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
       
       - name: Test semantic_search in specific package
         run: ./${{ matrix.binary }} semantic_search nimble_parsec -q "how to define a parser"
         shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
       
       - name: Test semantic_search in specific package version
         run: ./${{ matrix.binary }} semantic_search nimble_parsec 1.4.0 -q "how to use combinators"
         shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
       
       - name: Test semantic_search with custom model
         run: ./${{ matrix.binary }} semantic_search nimble_parsec -q "parser configuration" --model nomic-embed-text
         shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
       
       - name: Test semantic_search with custom limit
         run: ./${{ matrix.binary }} semantic_search nimble_parsec -q "nimble parser" --limit 5
         shell: bash
+        env:
+          OLLAMA_HOST: http://localhost:11434
       
       - name: Test hex_search for packages
         run: ./${{ matrix.binary }} hex_search --query "parser" --limit 3
