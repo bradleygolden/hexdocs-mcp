@@ -85,7 +85,12 @@ defmodule HexdocsMcp.Embeddings do
       end)
 
     {count, changesets, _, reused} = result
-    persist_changesets(changesets, count, reused, progress_callback)
+    
+    if total_chunks > 0 && count == 0 && reused == 0 do
+      {:error, "Failed to generate embeddings. Please check that Ollama is running and accessible."}
+    else
+      persist_changesets(changesets, count, reused, progress_callback)
+    end
   end
 
   defp process_batch(batch, {count, changesets, processed, reused}, client, model, total, callback, force?) do
@@ -158,6 +163,10 @@ defmodule HexdocsMcp.Embeddings do
         else
           {:error, :no_embedding}
         end
+
+      {:error, %Req.TransportError{reason: :econnrefused}} = error ->
+        Logger.error("Ollama connection refused for #{chunk_file}. Is Ollama running on http://localhost:11434?")
+        {:error, error}
 
       error ->
         Logger.error("Error processing #{chunk_file}: #{inspect(error)}")

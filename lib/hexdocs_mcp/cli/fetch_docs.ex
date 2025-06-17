@@ -277,21 +277,29 @@ defmodule HexdocsMcp.CLI.FetchDocs do
 
     progress_callback = create_embedding_progress_callback()
 
-    {:ok, {total_count, new_count, reused_count}} =
-      HexdocsMcp.Embeddings.generate(package, version, model, progress_callback: progress_callback, force: context.force?)
+    case HexdocsMcp.Embeddings.generate(package, version, model, progress_callback: progress_callback, force: context.force?) do
+      {:ok, {total_count, new_count, reused_count}} ->
+        Utils.output_info("#{Utils.check()} Processing completed:")
+        Utils.output_info("  • Docs location: #{docs_path}")
+        Utils.output_info("  • Markdown file: #{output_file}")
+        Utils.output_info("  • Created #{chunk_count} chunks in: #{chunks_dir}")
+        Utils.output_info("  • Generated #{total_count} embeddings (#{new_count} new, #{reused_count} reused)")
 
-    Utils.output_info("#{Utils.check()} Processing completed:")
-    Utils.output_info("  • Docs location: #{docs_path}")
-    Utils.output_info("  • Markdown file: #{output_file}")
-    Utils.output_info("  • Created #{chunk_count} chunks in: #{chunks_dir}")
-    Utils.output_info("  • Generated #{total_count} embeddings (#{new_count} new, #{reused_count} reused)")
+        Process.delete(:processing_progress_fn)
+        Process.delete(:saving_progress_fn)
+        Process.delete(:progress_processing_total)
+        Process.delete(:progress_saving_total)
 
-    Process.delete(:processing_progress_fn)
-    Process.delete(:saving_progress_fn)
-    Process.delete(:progress_processing_total)
-    Process.delete(:progress_saving_total)
+        :ok
 
-    :ok
+      {:error, message} ->
+        Process.delete(:processing_progress_fn)
+        Process.delete(:saving_progress_fn)
+        Process.delete(:progress_processing_total)
+        Process.delete(:progress_saving_total)
+        
+        raise(message)
+    end
   end
 
   defp execute_docs_fetch_quietly(package, version) do
