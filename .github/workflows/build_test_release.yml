@@ -224,7 +224,8 @@ jobs:
           $env:PATH = "C:\ollama;$env:PATH"
           
           Write-Host "Starting Ollama server in background..."
-          Start-Process -FilePath "C:\ollama\ollama.exe" -ArgumentList "serve" -NoNewWindow
+          $ollamaProcess = Start-Process -FilePath "C:\ollama\ollama.exe" -ArgumentList "serve" -WindowStyle Hidden -PassThru
+          Write-Host "Started Ollama process with PID: $($ollamaProcess.Id)"
           
           Write-Host "Waiting for Ollama to start..."
           $attempts = 0
@@ -356,6 +357,20 @@ jobs:
           end
           '@ | Out-File -FilePath mix.exs -Encoding utf8
           cd ..
+        shell: pwsh
+      
+      - name: Verify Ollama is still running (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Write-Host "Checking if Ollama is still accessible..."
+          try {
+            $response = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method GET -ErrorAction Stop
+            Write-Host "✓ Ollama is accessible"
+          } catch {
+            Write-Host "✗ Ollama is not accessible: $_"
+            Get-Process -Name "ollama" -ErrorAction SilentlyContinue | Format-Table
+            exit 1
+          }
         shell: pwsh
       
       - name: Test help command
