@@ -488,8 +488,8 @@ jobs:
         env:
           OLLAMA_HOST: http://localhost:11434
       
-      - name: Test fetch_docs with custom model
-        run: ./${{ matrix.binary }} fetch_docs jason --model nomic-embed-text
+      - name: Test fetch_docs with mxbai-embed-large
+        run: ./${{ matrix.binary }} fetch_docs jason
         shell: bash
         env:
           OLLAMA_HOST: http://localhost:11434
@@ -530,8 +530,8 @@ jobs:
         env:
           OLLAMA_HOST: http://localhost:11434
       
-      - name: Test semantic_search with custom model
-        run: ./${{ matrix.binary }} semantic_search nimble_parsec -q "parser configuration" --model nomic-embed-text
+      - name: Test semantic_search with mxbai-embed-large
+        run: ./${{ matrix.binary }} semantic_search nimble_parsec -q "parser configuration"
         shell: bash
         env:
           OLLAMA_HOST: http://localhost:11434
