@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--version VERSION` flag to search specific version
 - Improved model error messaging with instructions to pull required models
 
+### Fixed
+- Fixed embedding generation on Windows by handling both singular (`embedding`) and plural (`embeddings`) response formats from Ollama API
+
 ### Changed
 - **BREAKING**: Default embedding model changed from `nomic-embed-text` to `mxbai-embed-large`
   - Provides significantly better semantic search quality

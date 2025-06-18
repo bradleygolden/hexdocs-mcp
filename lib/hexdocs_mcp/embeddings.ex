@@ -243,16 +243,19 @@ defmodule HexdocsMcp.Embeddings do
   end
 
   defp extract_embedding(response, chunk_file) do
-    case response["embeddings"] do
-      nil ->
+    case response do
+      %{"embedding" => embedding} when is_list(embedding) ->
+        embedding
+
+      %{"embeddings" => [first_embedding | _]} ->
+        first_embedding
+
+      %{"embeddings" => nil} ->
         Logger.error("No embeddings in response for #{chunk_file}")
         nil
 
-      [first_embedding | _] ->
-        first_embedding
-
       _ ->
-        Logger.error("Unexpected embeddings format in response for #{chunk_file}")
+        Logger.error("Unexpected embedding format in response for #{chunk_file}: #{inspect(response)}")
         nil
     end
   end

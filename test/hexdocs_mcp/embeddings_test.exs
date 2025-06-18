@@ -611,6 +611,33 @@ defmodule HexdocsMcp.EmbeddingsTest do
       assert length(embeddings) == 2
     end
 
+    test "handles both singular and plural embedding response formats" do
+      %{test_package: package} = setup_test_environment()
+
+      HexdocsMcp.MockOllama
+      |> expect(:init, 2, fn _ -> %{mock: true} end)
+      |> expect(:embed, 4, fn _client, opts ->
+        embedding = List.duplicate(0.1, 1024)
+
+        case opts[:input] do
+          "Sample text for chunk 1" ->
+            # Return singular format (as seen on Windows)
+            {:ok, %{"model" => opts[:model], "embedding" => embedding}}
+
+          _ ->
+            # Return plural format (standard)
+            {:ok, %{"model" => opts[:model], "embeddings" => [embedding]}}
+        end
+      end)
+
+      {:ok, {total, new, _}} = Embeddings.generate(package, @default_version, @default_model)
+      assert total == 3
+      assert new == 3
+
+      embeddings = Repo.all(from e in Embedding, where: e.package == ^package)
+      assert length(embeddings) == 3
+    end
+
     test "handles empty changesets" do
       test_data_path = Path.join(System.tmp_dir!(), "hexdocs_mcp_test")
       empty_package = "empty_package"
